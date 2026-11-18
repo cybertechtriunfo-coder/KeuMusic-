@@ -1,11 +1,13 @@
 
-name: Android CI
+name: KeuMusic Android APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -13,23 +15,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Baixar projeto
         uses: actions/checkout@v4
 
-      - name: Set up JDK
+      - name: Configurar Java
         uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
 
-      - name: Grant execute permission for gradlew
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Dar permissão ao Gradle
         run: chmod +x gradlew
 
-      - name: Build APK
+      - name: Compilar APK
         run: ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
           name: KeuMusic-APK
