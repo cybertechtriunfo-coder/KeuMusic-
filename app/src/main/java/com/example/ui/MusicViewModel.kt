@@ -1,3 +1,4 @@
+
 package com.example.ui
 
 import android.app.Application
@@ -17,6 +18,7 @@ import com.example.data.repository.MusicRepository
 import com.example.data.youtube.YouTubeSearchResponse
 import com.example.data.youtube.YouTubeTrackResult
 import com.example.data.youtube.YouTubeUrlParser
+import com.example.player.BackgroundAudioController
 import com.example.player.PlaybackUiState
 import com.example.player.YouTubePlayerController
 import com.example.ui.components.LibraryCategoryChip
@@ -51,6 +53,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = MusicRepository(AppDatabase.getInstance(application).musicDao())
     private val offlineCacheManager = OfflineMusicCacheManager(application)
+    private val backgroundAudioController = BackgroundAudioController(application)
 
     val isBackgroundCachingEnabled: StateFlow<Boolean> = application.keuMusicDataStore.data
         .map { prefs -> prefs[KEY_BACKGROUND_CACHING_ENABLED] ?: false }
@@ -185,11 +188,13 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectCategoryChip(chip: LibraryCategoryChip) {
-        _selectedCategoryChip.value = if (_selectedCategoryChip.value == chip && chip != LibraryCategoryChip.ALL) {
-            LibraryCategoryChip.ALL
-        } else {
-            chip
-        }
+        _selectedCategoryChip.value =
+            if (_selectedCategoryChip.value == chip && chip != LibraryCategoryChip.ALL) {
+                LibraryCategoryChip.ALL
+            } else {
+                chip
+            }
+
         if (_topLibraryQuery.value.isNotBlank()) {
             _topLibraryQuery.value = ""
         }
@@ -209,6 +214,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             getApplication<Application>().keuMusicDataStore.edit { prefs ->
                 prefs[KEY_BACKGROUND_CACHING_ENABLED] = enabled
             }
+
             if (enabled) {
                 scheduleBackgroundCacheSync(priorityTrack = playbackState.value.currentTrack)
                 _snackbarMessage.value = "Cache offline em segundo plano ativado"
@@ -243,6 +249,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             recent = recentlyPlayed.value,
             featured = featuredTracks.value
         )
+
         offlineCacheManager.scheduleBackgroundCaching(
             enabled = isBackgroundCachingEnabled.value,
             candidates = candidates
@@ -266,9 +273,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun searchYouTube(query: String = _searchQuery.value, playlistsOnly: Boolean = false) {
         val clean = query.trim()
         if (clean.isEmpty()) return
+
         _searchQuery.value = clean
+
         viewModelScope.launch {
             _youtubeSearchState.value = YouTubeSearchUiState.Loading
+
             repository.searchYouTube(clean, playlistsOnly)
                 .onSuccess { response ->
                     _youtubeSearchState.value = YouTubeSearchUiState.Success(response)
@@ -284,6 +294,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun importPlaylistFromUrl(rawInput: String, onImported: (PlaylistEntity) -> Unit = {}) {
         viewModelScope.launch {
             _isBusy.value = true
+
             repository.importFromUrlOrId(rawInput)
                 .onSuccess { playlist ->
                     _snackbarMessage.value = "Playlist \"${playlist.title}\" importada!"
@@ -292,6 +303,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 .onFailure { err ->
                     _snackbarMessage.value = err.message ?: "Falha ao importar playlist."
                 }
+
             _isBusy.value = false
         }
     }
@@ -299,6 +311,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun importYouTubePlaylistById(playlistId: String, onImported: (PlaylistEntity) -> Unit = {}) {
         viewModelScope.launch {
             _isBusy.value = true
+
             repository.importYouTubePlaylistById(playlistId)
                 .onSuccess { playlist ->
                     _snackbarMessage.value = "Salvo na biblioteca: ${playlist.title}"
@@ -307,11 +320,16 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 .onFailure { err ->
                     _snackbarMessage.value = err.message ?: "Erro ao importar playlist do YouTube."
                 }
+
             _isBusy.value = false
         }
     }
 
-    fun createCustomPlaylist(title: String, subtitle: String, onCreated: (PlaylistEntity) -> Unit = {}) {
+    fun createCustomPlaylist(
+        title: String,
+        subtitle: String,
+        onCreated: (PlaylistEntity) -> Unit = {}
+    ) {
         viewModelScope.launch {
             val playlist = repository.createCustomPlaylist(title, subtitle)
             _snackbarMessage.value = "Playlist \"${playlist.title}\" criada!"
@@ -322,6 +340,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun addTrackUrlToPlaylist(playlistId: String, rawInput: String) {
         viewModelScope.launch {
             _isBusy.value = true
+
             repository.addTrackUrlToPlaylist(playlistId, rawInput)
                 .onSuccess { track ->
                     _snackbarMessage.value = "Adicionada: ${track.title}"
@@ -329,6 +348,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 .onFailure { err ->
                     _snackbarMessage.value = err.message ?: "Não foi possível adicionar a faixa."
                 }
+
             _isBusy.value = false
         }
     }
@@ -370,6 +390,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun syncPlaylist(playlistId: String) {
         viewModelScope.launch {
             _isBusy.value = true
+
             repository.syncPlaylist(playlistId)
                 .onSuccess { playlist ->
                     _snackbarMessage.value = "\"${playlist.title}\" sincronizada com o YouTube!"
@@ -377,6 +398,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 .onFailure { err ->
                     _snackbarMessage.value = err.message ?: "Falha na sincronização."
                 }
+
             _isBusy.value = false
         }
     }
@@ -384,15 +406,38 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleLike(youtubeVideoId: String) {
         viewModelScope.launch {
             val liked = repository.toggleLike(youtubeVideoId)
-            _snackbarMessage.value = if (liked) "Adicionada às Músicas Curtidas" else "Removida das Curtidas"
+            _snackbarMessage.value =
+                if (liked) "Adicionada às Músicas Curtidas" else "Removida das Curtidas"
         }
+    }
+
+    fun playAuthorizedAudio(url: String, title: String) {
+        val accepted = backgroundAudioController.play(url, title)
+
+        if (!accepted) {
+            _snackbarMessage.value =
+                "Use um link HTTPS direto de áudio autorizado. Links do YouTube não são aceitos aqui."
+        } else {
+            _snackbarMessage.value = "Solicitação de reprodução enviada."
+        }
+    }
+
+    fun pauseAuthorizedAudio() {
+        backgroundAudioController.pause()
+    }
+
+    fun resumeAuthorizedAudio() {
+        backgroundAudioController.resume()
     }
 
     fun playTrack(track: TrackEntity, queue: List<TrackEntity>) {
         playerController.playTrack(track, queue)
     }
 
-    fun playYouTubeSearchTrack(track: YouTubeTrackResult, allResults: List<YouTubeTrackResult>) {
+    fun playYouTubeSearchTrack(
+        track: YouTubeTrackResult,
+        allResults: List<YouTubeTrackResult>
+    ) {
         val queue = allResults.mapIndexed { index, item ->
             TrackEntity(
                 id = "search_${item.videoId}_$index",
@@ -400,18 +445,22 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 youtubeVideoId = item.videoId,
                 title = item.title,
                 artist = item.artist,
-                thumbnailUrl = item.thumbnailUrl.ifBlank { YouTubeUrlParser.hqThumbnail(item.videoId) },
+                thumbnailUrl = item.thumbnailUrl.ifBlank {
+                    YouTubeUrlParser.hqThumbnail(item.videoId)
+                },
                 durationText = item.durationText,
                 durationSeconds = item.durationSeconds,
                 position = index
             )
         }
+
         val selected = queue.firstOrNull { it.youtubeVideoId == track.videoId } ?: return
         playerController.playTrack(selected, queue)
     }
 
     fun playPlaylistTracks(tracks: List<TrackEntity>, shuffle: Boolean = false) {
         if (tracks.isEmpty()) return
+
         val ordered = if (shuffle) tracks.shuffled() else tracks
         playerController.playTrack(ordered.first(), ordered)
     }
@@ -419,6 +468,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun playPlaylistById(playlistId: String, shuffle: Boolean = false) {
         viewModelScope.launch {
             val tracks = repository.getTracksSnapshot(playlistId)
+
             if (tracks.isNotEmpty()) {
                 val ordered = if (shuffle) tracks.shuffled() else tracks
                 playerController.playTrack(ordered.first(), ordered)
@@ -431,13 +481,16 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun quickStartPlayback() {
         viewModelScope.launch {
             val currentPlaylists = playlists.value
+
             for (pl in currentPlaylists) {
                 val tracks = repository.getTracksSnapshot(pl.id)
+
                 if (tracks.isNotEmpty()) {
                     playerController.playTrack(tracks.first(), tracks)
                     return@launch
                 }
             }
+
             _snackbarMessage.value = "Importe ou selecione uma playlist para tocar."
         }
     }
@@ -454,5 +507,6 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
         offlineCacheManager.release()
         playerController.release()
+        backgroundAudioController.release()
     }
 }
