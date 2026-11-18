@@ -3,39 +3,39 @@ name: KeuMusic Android APK
 
 on:
   push:
-      branches:
-            - main
-              pull_request:
-                  branches:
-                        - main
-                          workflow_dispatch:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
-                          jobs:
-                            build:
-                                runs-on: ubuntu-latest
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-                                    steps:
-                                          - name: Baixar projeto
-                                                  uses: actions/checkout@v4
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
 
-                                                        - name: Configurar Java
-                                                                uses: actions/setup-java@v4
-                                                                        with:
-                                                                                  distribution: temurin
-                                                                                            java-version: '17'
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-                                                                                                  - name: Preparar Gradle
-                                                                                                          uses: gradle/actions/setup-gradle@v4
-                                                                                                                  with:
-                                                                                                                            gradle-version: '9.3.1'
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
-                                                                                                                                  - name: Compilar APK
-                                                                                                                                          run: gradle assembleDebug
+      - name: Compilar APK
+        run: gradle assembleDebug
 
-                                                                                                                                                - name: Disponibilizar APK
-                                                                                                                                                        uses: actions/upload-artifact@v4
-                                                                                                                                                                with:
-                                                                                                                                                                          name: KeuMusic-APK
-                                                                                                                                                                                    path: app/build/outputs/apk/debug/*.apk
-                                                                                                                                                                                              if-no-files-found: error
-                                                                                                                                                                                              
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeuMusic-APK
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          
