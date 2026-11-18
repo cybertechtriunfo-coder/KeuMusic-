@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">KEUMUSIC</string>
+    <string name="nav_home">Início</string>
+    <string name="nav_search">Buscar</string>
+    <string name="nav_library">Biblioteca</string>
+    <string name="import_playlist">Importar Playlist</string>
+    <string name="create_playlist">Nova Playlist</string>
+    <string name="liked_songs">Músicas Curtidas</string>
+    <string name="recently_played">Tocadas Recentemente</string>
+    <string name="your_playlists">Suas Playlists do YouTube</string>
+    <string name="search_hint">O que você quer ouvir?</string>
+    <string name="now_playing">Tocando agora</string>
+    <string name="open_in_youtube">Abrir no YouTube</string>
+    <string name="developer_name">Cleudeson Soares</string>
+    <string name="developed_by">Desenvolvido por Cleudeson Soares</string>
+</resources>

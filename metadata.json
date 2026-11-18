@@ -1,0 +1,6 @@
+{
+  "name": "KEUMUSIC",
+  "description": "Aplicativo de música estilo Spotify com playlists do YouTube. Desenvolvido por Cleudeson Soares.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
