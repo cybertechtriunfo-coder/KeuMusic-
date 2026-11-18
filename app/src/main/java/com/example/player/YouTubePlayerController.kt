@@ -1,3 +1,4 @@
+
 package com.example.player
 
 import android.annotation.SuppressLint
@@ -86,6 +87,7 @@ class YouTubePlayerController(
 
         val wv = WebView(context.applicationContext).apply {
             setBackgroundColor(Color.BLACK)
+
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
@@ -95,14 +97,18 @@ class YouTubePlayerController(
                 userAgentString =
                     "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
             }
+
             webChromeClient = WebChromeClient()
+
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView?,
                     request: WebResourceRequest?
                 ): Boolean {
                     val url = request?.url?.toString().orEmpty()
-                    return !(url.contains("youtube.com") || url.contains("youtube-nocookie.com") || url.contains("googlevideo.com"))
+                    return !(url.contains("youtube.com") ||
+                        url.contains("youtube-nocookie.com") ||
+                        url.contains("googlevideo.com"))
                 }
 
                 override fun onRenderProcessGone(
@@ -124,15 +130,20 @@ class YouTubePlayerController(
                     return true
                 }
             }
+
             addJavascriptInterface(PlayerJsBridge(), "AndroidBridge")
+
+            // Identificação do aplicativo exigida pelo YouTube.
+            // Deve corresponder ao applicationId do Android.
             loadDataWithBaseURL(
-                "https://www.youtube.com",
+                "https://com.pulsetube.music/",
                 buildPlayerHtml(),
                 "text/html",
                 "UTF-8",
-                null
+                "https://com.pulsetube.music/"
             )
         }
+
         webView = wv
         return wv
     }
@@ -158,6 +169,7 @@ class YouTubePlayerController(
         index: Int
     ) {
         stopOfflinePlayer()
+
         _state.update {
             it.copy(
                 currentTrack = track,
@@ -170,11 +182,13 @@ class YouTubePlayerController(
                 playerError = null
             )
         }
+
         ignoreProgressUntilMs = 0L
         onTrackStarted(track)
 
         val online = isNetworkAvailable()
         val cachedFile = resolveOfflineAudioFile(track.youtubeVideoId)
+
         if (!online) {
             if (cachedFile != null && cachedFile.exists()) {
                 playOfflineCachedFile(track, cachedFile)
@@ -220,6 +234,7 @@ class YouTubePlayerController(
             _state.update { it.copy(isPlaying = false) }
         } else {
             val online = isNetworkAvailable()
+
             if (!online) {
                 val cachedFile = resolveOfflineAudioFile(st.currentTrack.youtubeVideoId)
                 if (cachedFile != null && cachedFile.exists()) {
@@ -235,11 +250,13 @@ class YouTubePlayerController(
                 }
                 return
             }
+
             if (!st.isPlayerReady) {
                 loadVideoOnWebView(st.currentTrack.youtubeVideoId)
             } else {
                 evalJs("if(window.ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();")
             }
+
             _state.update { it.copy(isPlaying = true, playerError = null) }
         }
     }
@@ -266,31 +283,41 @@ class YouTubePlayerController(
                 } while (candidate == st.currentIndex)
                 candidate
             }
+
             st.currentIndex + 1 < st.queue.size -> st.currentIndex + 1
             st.repeatMode == RepeatMode.ALL || !autoAdvance -> 0
+
             else -> {
                 _state.update { it.copy(isPlaying = false) }
                 return
             }
         }
+
         playFromQueueIndex(nextIdx)
     }
 
     fun playPrevious() {
         val st = _state.value
         if (st.queue.isEmpty()) return
+
         if (st.currentPositionSec > 4f) {
             seekTo(0f)
             return
         }
-        val prevIdx = if (st.currentIndex - 1 >= 0) st.currentIndex - 1 else st.queue.lastIndex
+
+        val prevIdx =
+            if (st.currentIndex - 1 >= 0) st.currentIndex - 1
+            else st.queue.lastIndex
+
         playFromQueueIndex(prevIdx)
     }
 
     fun seekTo(seconds: Float) {
         val clamped = seconds.coerceAtLeast(0f)
         ignoreProgressUntilMs = System.currentTimeMillis() + 900L
+
         _state.update { it.copy(currentPositionSec = clamped) }
+
         if (_state.value.isPlayingOfflineCache) {
             runCatching { offlineMediaPlayer?.seekTo((clamped * 1000f).toInt()) }
         } else {
@@ -324,9 +351,11 @@ class YouTubePlayerController(
     fun addTrackToQueueNext(track: TrackEntity) {
         _state.update { st ->
             if (st.currentTrack == null) return@update st
+
             val mutable = st.queue.toMutableList()
             val insertAt = (st.currentIndex + 1).coerceAtMost(mutable.size)
             mutable.add(insertAt, track)
+
             st.copy(queue = mutable)
         }
     }
@@ -352,10 +381,15 @@ class YouTubePlayerController(
                             .setUsage(AudioAttributes.USAGE_MEDIA)
                             .build()
                     )
+
                     setDataSource(file.absolutePath)
+
                     setOnPreparedListener { mp ->
                         mp.start()
-                        val durSec = (mp.duration / 1000f).coerceAtLeast(track.durationSeconds.toFloat())
+
+                        val durSec =
+                            (mp.duration / 1000f).coerceAtLeast(track.durationSeconds.toFloat())
+
                         _state.update {
                             it.copy(
                                 isPlaying = true,
@@ -365,12 +399,15 @@ class YouTubePlayerController(
                                 playerError = null
                             )
                         }
+
                         mainHandler.removeCallbacks(offlineProgressRunnable)
                         mainHandler.post(offlineProgressRunnable)
                     }
+
                     setOnCompletionListener {
                         playNext(autoAdvance = true)
                     }
+
                     setOnErrorListener { _, _, _ ->
                         _state.update {
                             it.copy(
@@ -382,8 +419,10 @@ class YouTubePlayerController(
                         }
                         true
                     }
+
                     prepareAsync()
                 }
+
                 offlineMediaPlayer = player
             } catch (_: Exception) {
                 _state.update {
@@ -400,6 +439,7 @@ class YouTubePlayerController(
 
     private fun stopOfflinePlayer() {
         mainHandler.removeCallbacks(offlineProgressRunnable)
+
         offlineMediaPlayer?.let { mp ->
             runCatching {
                 if (mp.isPlaying) mp.stop()
@@ -407,6 +447,7 @@ class YouTubePlayerController(
                 mp.release()
             }
         }
+
         offlineMediaPlayer = null
     }
 
@@ -430,6 +471,7 @@ class YouTubePlayerController(
         fun onReady() {
             mainHandler.post {
                 _state.update { it.copy(isPlayerReady = true) }
+
                 pendingVideoId?.let { vid ->
                     pendingVideoId = null
                     evalJs("if(window.loadVideoSafe) window.loadVideoSafe('$vid');")
@@ -444,12 +486,15 @@ class YouTubePlayerController(
                     1 -> _state.update {
                         it.copy(isPlaying = true, isBuffering = false, playerError = null)
                     }
+
                     2 -> _state.update {
                         it.copy(isPlaying = false, isBuffering = false)
                     }
+
                     3 -> _state.update {
                         it.copy(isBuffering = true)
                     }
+
                     0 -> playNext(autoAdvance = true)
                 }
             }
@@ -458,11 +503,18 @@ class YouTubePlayerController(
         @JavascriptInterface
         fun onProgress(currentSec: Float, durationSec: Float) {
             mainHandler.post {
-                val skipPositionUpdate = System.currentTimeMillis() < ignoreProgressUntilMs
+                val skipPositionUpdate =
+                    System.currentTimeMillis() < ignoreProgressUntilMs
+
                 _state.update { st ->
                     st.copy(
-                        currentPositionSec = if (skipPositionUpdate) st.currentPositionSec else currentSec.coerceAtLeast(0f),
-                        durationSec = if (durationSec > 0f) durationSec else st.durationSec
+                        currentPositionSec =
+                            if (skipPositionUpdate) st.currentPositionSec
+                            else currentSec.coerceAtLeast(0f),
+
+                        durationSec =
+                            if (durationSec > 0f) durationSec
+                            else st.durationSec
                     )
                 }
             }
@@ -472,18 +524,37 @@ class YouTubePlayerController(
         fun onError(errorCode: Int) {
             mainHandler.post {
                 val activeTrack = _state.value.currentTrack
-                val cachedFile = activeTrack?.let { resolveOfflineAudioFile(it.youtubeVideoId) }
-                if (activeTrack != null && cachedFile != null && cachedFile.exists()) {
+                val cachedFile =
+                    activeTrack?.let { resolveOfflineAudioFile(it.youtubeVideoId) }
+
+                if (activeTrack != null &&
+                    cachedFile != null &&
+                    cachedFile.exists()
+                ) {
                     playOfflineCachedFile(activeTrack, cachedFile)
                     return@post
                 }
+
                 val msg = when (errorCode) {
-                    101, 150, 153 -> "Este vídeo restringiu reprodução incorporada. Toque em 'Abrir no YouTube' ou pule para a próxima."
-                    100 -> "Vídeo não encontrado ou removido do YouTube."
-                    else -> "Erro ao reproduzir vídeo ($errorCode). Tente a próxima faixa."
+                    101, 150 ->
+                        "Este vídeo restringiu reprodução incorporada. Toque em 'Abrir no YouTube' ou pule para a próxima."
+
+                    153 ->
+                        "O YouTube não recebeu a identificação do aplicativo (erro 153). Verifique a conexão e tente novamente."
+
+                    100 ->
+                        "Vídeo não encontrado ou removido do YouTube."
+
+                    else ->
+                        "Erro ao reproduzir vídeo ($errorCode). Tente a próxima faixa."
                 }
+
                 _state.update {
-                    it.copy(isPlaying = false, isBuffering = false, playerError = msg)
+                    it.copy(
+                        isPlaying = false,
+                        isBuffering = false,
+                        playerError = msg
+                    )
                 }
             }
         }
@@ -494,6 +565,7 @@ class YouTubePlayerController(
         <html>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <meta name="referrer" content="strict-origin-when-cross-origin">
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
@@ -502,9 +574,11 @@ class YouTubePlayerController(
         </head>
         <body>
           <div id="player"></div>
+
           <script>
             var tag = document.createElement('script');
             tag.src = "https://www.youtube.com/iframe_api";
+
             var firstScriptTag = document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
@@ -524,29 +598,40 @@ class YouTubePlayerController(
                   'modestbranding': 1,
                   'fs': 0,
                   'iv_load_policy': 3,
-                  'origin': 'https://www.youtube.com'
+                  'origin': 'https://com.pulsetube.music'
                 },
                 events: {
                   'onReady': function() {
-                    if (window.AndroidBridge) AndroidBridge.onReady();
+                    if (window.AndroidBridge) {
+                      AndroidBridge.onReady();
+                    }
+
                     if (pendingId) {
                       ytPlayer.loadVideoById(pendingId);
                       pendingId = null;
                     }
+
                     startProgressLoop();
                   },
+
                   'onStateChange': function(e) {
-                    if (window.AndroidBridge) AndroidBridge.onStateChange(e.data);
+                    if (window.AndroidBridge) {
+                      AndroidBridge.onStateChange(e.data);
+                    }
                   },
+
                   'onError': function(e) {
-                    if (window.AndroidBridge) AndroidBridge.onError(e.data);
+                    if (window.AndroidBridge) {
+                      AndroidBridge.onError(e.data);
+                    }
                   }
                 }
               });
             }
 
             window.loadVideoSafe = function(videoId) {
-              if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+              if (ytPlayer &&
+                  typeof ytPlayer.loadVideoById === 'function') {
                 ytPlayer.loadVideoById(videoId);
               } else {
                 pendingId = videoId;
@@ -554,12 +639,19 @@ class YouTubePlayerController(
             };
 
             function startProgressLoop() {
-              if (progressTimer) clearInterval(progressTimer);
+              if (progressTimer) {
+                clearInterval(progressTimer);
+              }
+
               progressTimer = setInterval(function() {
-                if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+                if (ytPlayer &&
+                    typeof ytPlayer.getCurrentTime === 'function') {
                   var cur = ytPlayer.getCurrentTime() || 0;
                   var dur = ytPlayer.getDuration() || 0;
-                  if (window.AndroidBridge) AndroidBridge.onProgress(cur, dur);
+
+                  if (window.AndroidBridge) {
+                    AndroidBridge.onProgress(cur, dur);
+                  }
                 }
               }, 500);
             }
