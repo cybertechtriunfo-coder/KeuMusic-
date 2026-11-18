@@ -1,3 +1,4 @@
+
 package com.example.ui
 
 import android.content.Context
@@ -41,6 +42,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -77,6 +79,7 @@ import androidx.navigation.navArgument
 import com.example.data.local.TrackEntity
 import com.example.data.youtube.YouTubeTrackResult
 import com.example.ui.components.AddToPlaylistDialog
+import com.example.ui.components.AuthorizedAudioDialog
 import com.example.ui.components.CreatePlaylistDialog
 import com.example.ui.components.ImportYouTubeDialog
 import com.example.ui.components.KeuMusicTopBar
@@ -143,6 +146,7 @@ fun PulseTubeApp(
     var showImportDialog by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
+    var showAuthorizedAudioDialog by remember { mutableStateOf(false) }
     var pendingLocalTrackForPlaylist by remember { mutableStateOf<TrackEntity?>(null) }
     var pendingYtTrackForPlaylist by remember { mutableStateOf<YouTubeTrackResult?>(null) }
 
@@ -154,6 +158,7 @@ fun PulseTubeApp(
     }
 
     val anyDialogOpen = showImportDialog || showCreateDialog || showSettingsSheet ||
+        showAuthorizedAudioDialog ||
         pendingLocalTrackForPlaylist != null || pendingYtTrackForPlaylist != null
 
     val navigateToTop: (String) -> Unit = { route ->
@@ -306,6 +311,16 @@ fun PulseTubeApp(
                         isBackgroundCachingEnabled = isBackgroundCachingEnabled,
                         onOpenSettings = { showSettingsSheet = true }
                     )
+
+                    Button(
+                        onClick = { showAuthorizedAudioDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text("Áudio externo")
+                    }
+
                     if (showTopLibrarySearch) {
                         TopLibrarySearchBar(
                             query = topLibraryQuery,
@@ -363,141 +378,141 @@ fun PulseTubeApp(
                                 )
                             }
 
-                    composable(TopDestination.Search.route) {
-                        SearchScreen(
-                            query = searchQuery,
-                            localResults = localSearchResults,
-                            youtubeSearchState = youtubeSearchState,
-                            currentPlayingVideoId = playbackState.currentTrack?.youtubeVideoId,
-                            likedVideoIds = likedVideoIds,
-                            onQueryChange = { viewModel.updateSearchQuery(it) },
-                            onTriggerYouTubeSearch = { q, playlistsOnly ->
-                                viewModel.searchYouTube(q, playlistsOnly)
-                            },
-                            onImportYouTubePlaylist = { ytPlaylistId ->
-                                viewModel.importYouTubePlaylistById(ytPlaylistId) { imported ->
-                                    navController.navigate("playlist/${imported.id}")
-                                }
-                            },
-                            onPlayLocalTrack = { track, queue -> viewModel.playTrack(track, queue) },
-                            onPlayYouTubeTrack = { track, all ->
-                                viewModel.playYouTubeSearchTrack(track, all)
-                            },
-                            onAddYouTubeTrackToPlaylist = { ytTrack ->
-                                pendingYtTrackForPlaylist = ytTrack
-                            },
-                            onAddLocalTrackToPlaylist = { track ->
-                                pendingLocalTrackForPlaylist = track
-                            },
-                            onToggleLike = { vid -> viewModel.toggleLike(vid) },
-                            onPlayNext = { track ->
-                                viewModel.playerController.addTrackToQueueNext(track)
-                                viewModel.showMessage("Adicionada a seguir na fila")
-                            },
-                            onOpenInYouTube = { vid -> openVideoInYouTube(context, vid) },
-                            cachedVideoIds = offlineCacheStats.cachedVideoIds
-                        )
-                    }
+                            composable(TopDestination.Search.route) {
+                                SearchScreen(
+                                    query = searchQuery,
+                                    localResults = localSearchResults,
+                                    youtubeSearchState = youtubeSearchState,
+                                    currentPlayingVideoId = playbackState.currentTrack?.youtubeVideoId,
+                                    likedVideoIds = likedVideoIds,
+                                    onQueryChange = { viewModel.updateSearchQuery(it) },
+                                    onTriggerYouTubeSearch = { q, playlistsOnly ->
+                                        viewModel.searchYouTube(q, playlistsOnly)
+                                    },
+                                    onImportYouTubePlaylist = { ytPlaylistId ->
+                                        viewModel.importYouTubePlaylistById(ytPlaylistId) { imported ->
+                                            navController.navigate("playlist/${imported.id}")
+                                        }
+                                    },
+                                    onPlayLocalTrack = { track, queue -> viewModel.playTrack(track, queue) },
+                                    onPlayYouTubeTrack = { track, all ->
+                                        viewModel.playYouTubeSearchTrack(track, all)
+                                    },
+                                    onAddYouTubeTrackToPlaylist = { ytTrack ->
+                                        pendingYtTrackForPlaylist = ytTrack
+                                    },
+                                    onAddLocalTrackToPlaylist = { track ->
+                                        pendingLocalTrackForPlaylist = track
+                                    },
+                                    onToggleLike = { vid -> viewModel.toggleLike(vid) },
+                                    onPlayNext = { track ->
+                                        viewModel.playerController.addTrackToQueueNext(track)
+                                        viewModel.showMessage("Adicionada a seguir na fila")
+                                    },
+                                    onOpenInYouTube = { vid -> openVideoInYouTube(context, vid) },
+                                    cachedVideoIds = offlineCacheStats.cachedVideoIds
+                                )
+                            }
 
-                    composable(TopDestination.Library.route) {
-                        LibraryScreen(
-                            selectedCategory = selectedCategoryChip,
-                            playlists = playlists,
-                            recentlyPlayed = recentlyPlayed,
-                            featuredTracks = featuredTracks,
-                            likedTracks = likedTracks,
-                            likedCount = likedCount,
-                            currentPlayingVideoId = playbackState.currentTrack?.youtubeVideoId,
-                            likedVideoIds = likedVideoIds,
-                            onSelectCategory = { viewModel.selectCategoryChip(it) },
-                            onOpenPlaylist = { id ->
-                                viewModel.clearTopLibraryQuery()
-                                navController.navigate("playlist/$id")
-                            },
-                            onPlayPlaylist = { id -> viewModel.playPlaylistById(id) },
-                            onOpenLikedSongs = {
-                                viewModel.clearTopLibraryQuery()
-                                navController.navigate("liked")
-                            },
-                            onOpenImportDialog = { showImportDialog = true },
-                            onOpenCreateDialog = { showCreateDialog = true },
-                            onDeletePlaylist = { id -> viewModel.deletePlaylist(id) },
-                            onPlayTrack = { track, queue -> viewModel.playTrack(track, queue) },
-                            onToggleLike = { vid -> viewModel.toggleLike(vid) },
-                            onAddTrackToPlaylist = { track -> pendingLocalTrackForPlaylist = track },
-                            onPlayNext = { track ->
-                                viewModel.playerController.addTrackToQueueNext(track)
-                                viewModel.showMessage("Adicionada a seguir na fila")
-                            },
-                            onOpenInYouTube = { vid -> openVideoInYouTube(context, vid) },
-                            cachedVideoIds = offlineCacheStats.cachedVideoIds,
-                            isBackgroundCachingEnabled = isBackgroundCachingEnabled,
-                            offlineCacheStats = offlineCacheStats,
-                            onOpenOfflineSettings = { showSettingsSheet = true }
-                        )
-                    }
+                            composable(TopDestination.Library.route) {
+                                LibraryScreen(
+                                    selectedCategory = selectedCategoryChip,
+                                    playlists = playlists,
+                                    recentlyPlayed = recentlyPlayed,
+                                    featuredTracks = featuredTracks,
+                                    likedTracks = likedTracks,
+                                    likedCount = likedCount,
+                                    currentPlayingVideoId = playbackState.currentTrack?.youtubeVideoId,
+                                    likedVideoIds = likedVideoIds,
+                                    onSelectCategory = { viewModel.selectCategoryChip(it) },
+                                    onOpenPlaylist = { id ->
+                                        viewModel.clearTopLibraryQuery()
+                                        navController.navigate("playlist/$id")
+                                    },
+                                    onPlayPlaylist = { id -> viewModel.playPlaylistById(id) },
+                                    onOpenLikedSongs = {
+                                        viewModel.clearTopLibraryQuery()
+                                        navController.navigate("liked")
+                                    },
+                                    onOpenImportDialog = { showImportDialog = true },
+                                    onOpenCreateDialog = { showCreateDialog = true },
+                                    onDeletePlaylist = { id -> viewModel.deletePlaylist(id) },
+                                    onPlayTrack = { track, queue -> viewModel.playTrack(track, queue) },
+                                    onToggleLike = { vid -> viewModel.toggleLike(vid) },
+                                    onAddTrackToPlaylist = { track -> pendingLocalTrackForPlaylist = track },
+                                    onPlayNext = { track ->
+                                        viewModel.playerController.addTrackToQueueNext(track)
+                                        viewModel.showMessage("Adicionada a seguir na fila")
+                                    },
+                                    onOpenInYouTube = { vid -> openVideoInYouTube(context, vid) },
+                                    cachedVideoIds = offlineCacheStats.cachedVideoIds,
+                                    isBackgroundCachingEnabled = isBackgroundCachingEnabled,
+                                    offlineCacheStats = offlineCacheStats,
+                                    onOpenOfflineSettings = { showSettingsSheet = true }
+                                )
+                            }
 
-                    composable(
-                        route = "playlist/{playlistId}",
-                        arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
-                    ) { entry ->
-                        val playlistId = entry.arguments?.getString("playlistId").orEmpty()
-                        val playlist by viewModel.observePlaylist(playlistId)
-                            .collectAsStateWithLifecycle(initialValue = null)
-                        val tracks by viewModel.observePlaylistTracks(playlistId)
-                            .collectAsStateWithLifecycle(initialValue = emptyList())
+                            composable(
+                                route = "playlist/{playlistId}",
+                                arguments = listOf(navArgument("playlistId") { type = NavType.StringType })
+                            ) { entry ->
+                                val playlistId = entry.arguments?.getString("playlistId").orEmpty()
+                                val playlist by viewModel.observePlaylist(playlistId)
+                                    .collectAsStateWithLifecycle(initialValue = null)
+                                val tracks by viewModel.observePlaylistTracks(playlistId)
+                                    .collectAsStateWithLifecycle(initialValue = emptyList())
 
-                        PlaylistDetailScreen(
-                            isLikedCollection = false,
-                            playlist = playlist,
-                            tracks = tracks,
-                            currentPlayingVideoId = playbackState.currentTrack?.youtubeVideoId,
-                            likedVideoIds = likedVideoIds,
-                            isBusy = isBusy,
-                            showBackButton = false,
-                            onBack = { navController.popBackStack() },
-                            onPlayAll = { shuffle -> viewModel.playPlaylistTracks(tracks, shuffle) },
-                            onPlayTrack = { track -> viewModel.playTrack(track, tracks) },
-                            onSyncPlaylist = { viewModel.syncPlaylist(playlistId) },
-                            onAddTrackUrl = { url -> viewModel.addTrackUrlToPlaylist(playlistId, url) },
-                            onToggleLike = { vid -> viewModel.toggleLike(vid) },
-                            onAddTrackToAnotherPlaylist = { track -> pendingLocalTrackForPlaylist = track },
-                            onPlayNext = { track ->
-                                viewModel.playerController.addTrackToQueueNext(track)
-                                viewModel.showMessage("Adicionada a seguir na fila")
-                            },
-                            onRemoveTrack = { trackId -> viewModel.removeTrackFromPlaylist(trackId) },
-                            onOpenInYouTube = { vid -> openVideoInYouTube(context, vid) },
-                            cachedVideoIds = offlineCacheStats.cachedVideoIds
-                        )
-                    }
+                                PlaylistDetailScreen(
+                                    isLikedCollection = false,
+                                    playlist = playlist,
+                                    tracks = tracks,
+                                    currentPlayingVideoId = playbackState.currentTrack?.youtubeVideoId,
+                                    likedVideoIds = likedVideoIds,
+                                    isBusy = isBusy,
+                                    showBackButton = false,
+                                    onBack = { navController.popBackStack() },
+                                    onPlayAll = { shuffle -> viewModel.playPlaylistTracks(tracks, shuffle) },
+                                    onPlayTrack = { track -> viewModel.playTrack(track, tracks) },
+                                    onSyncPlaylist = { viewModel.syncPlaylist(playlistId) },
+                                    onAddTrackUrl = { url -> viewModel.addTrackUrlToPlaylist(playlistId, url) },
+                                    onToggleLike = { vid -> viewModel.toggleLike(vid) },
+                                    onAddTrackToAnotherPlaylist = { track -> pendingLocalTrackForPlaylist = track },
+                                    onPlayNext = { track ->
+                                        viewModel.playerController.addTrackToQueueNext(track)
+                                        viewModel.showMessage("Adicionada a seguir na fila")
+                                    },
+                                    onRemoveTrack = { trackId -> viewModel.removeTrackFromPlaylist(trackId) },
+                                    onOpenInYouTube = { vid -> openVideoInYouTube(context, vid) },
+                                    cachedVideoIds = offlineCacheStats.cachedVideoIds
+                                )
+                            }
 
-                    composable("liked") {
-                        PlaylistDetailScreen(
-                            isLikedCollection = true,
-                            playlist = null,
-                            tracks = likedTracks,
-                            currentPlayingVideoId = playbackState.currentTrack?.youtubeVideoId,
-                            likedVideoIds = likedVideoIds,
-                            isBusy = isBusy,
-                            showBackButton = false,
-                            onBack = { navController.popBackStack() },
-                            onPlayAll = { shuffle -> viewModel.playPlaylistTracks(likedTracks, shuffle) },
-                            onPlayTrack = { track -> viewModel.playTrack(track, likedTracks) },
-                            onSyncPlaylist = {},
-                            onAddTrackUrl = {},
-                            onToggleLike = { vid -> viewModel.toggleLike(vid) },
-                            onAddTrackToAnotherPlaylist = { track -> pendingLocalTrackForPlaylist = track },
-                            onPlayNext = { track ->
-                                viewModel.playerController.addTrackToQueueNext(track)
-                                viewModel.showMessage("Adicionada a seguir na fila")
-                            },
-                            onRemoveTrack = null,
-                            onOpenInYouTube = { vid -> openVideoInYouTube(context, vid) },
-                            cachedVideoIds = offlineCacheStats.cachedVideoIds
-                        )
-                    }
-                }
+                            composable("liked") {
+                                PlaylistDetailScreen(
+                                    isLikedCollection = true,
+                                    playlist = null,
+                                    tracks = likedTracks,
+                                    currentPlayingVideoId = playbackState.currentTrack?.youtubeVideoId,
+                                    likedVideoIds = likedVideoIds,
+                                    isBusy = isBusy,
+                                    showBackButton = false,
+                                    onBack = { navController.popBackStack() },
+                                    onPlayAll = { shuffle -> viewModel.playPlaylistTracks(likedTracks, shuffle) },
+                                    onPlayTrack = { track -> viewModel.playTrack(track, likedTracks) },
+                                    onSyncPlaylist = {},
+                                    onAddTrackUrl = {},
+                                    onToggleLike = { vid -> viewModel.toggleLike(vid) },
+                                    onAddTrackToAnotherPlaylist = { track -> pendingLocalTrackForPlaylist = track },
+                                    onPlayNext = { track ->
+                                        viewModel.playerController.addTrackToQueueNext(track)
+                                        viewModel.showMessage("Adicionada a seguir na fila")
+                                    },
+                                    onRemoveTrack = null,
+                                    onOpenInYouTube = { vid -> openVideoInYouTube(context, vid) },
+                                    cachedVideoIds = offlineCacheStats.cachedVideoIds
+                                )
+                            }
+                        }
 
                         if (showTopLibrarySearch && topLibraryQuery.isNotBlank()) {
                             BackHandler { viewModel.clearTopLibraryQuery() }
@@ -565,7 +580,7 @@ fun PulseTubeApp(
             )
         }
 
-        // Persistent Single WebView Container (never destroyed or re-parented across navigation/collapse)
+        // Persistent Single WebView Container
         val activeBounds = when {
             anyDialogOpen || playbackState.currentTrack == null -> null
             playbackState.isPlayerExpanded && playbackState.showVideoStage -> expandedSlotBounds
@@ -671,6 +686,17 @@ fun PulseTubeApp(
             onCreateNewClick = {
                 showCreateDialog = true
             }
+        )
+    }
+
+    if (showAuthorizedAudioDialog) {
+        AuthorizedAudioDialog(
+            onDismiss = { showAuthorizedAudioDialog = false },
+            onPlay = { url, title ->
+                viewModel.playAuthorizedAudio(url, title)
+                showAuthorizedAudioDialog = false
+            },
+            onPause = { viewModel.pauseAuthorizedAudio() }
         )
     }
 
