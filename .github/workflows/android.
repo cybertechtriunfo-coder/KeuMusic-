@@ -2,9 +2,9 @@ name: Android CI
 
 on:
   push:
-    branches: [ "principal" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "principal" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -28,4 +28,4 @@ jobs:
           uses: actions/upload-artifact@v4
           with:
             name: KeuMusic-APK
-            path: '**/build/outputs/apk/debug/*.apk'
+            path: '**/build/outputs/apk/debug/
