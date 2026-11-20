@@ -44,7 +44,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.core.common.math.calculateGradientDistanceScore
 
-val DefaultThemeColor = Color(0xFF8B35FF)
+val DefaultThemeColor = Color(0xFF00D9FF)
 val LocalArchiveTuneFontPreference = staticCompositionLocalOf { AppFontPreference.DEFAULT }
 val LocalArchiveTuneFontFamily = staticCompositionLocalOf<FontFamily> { AppFontFamily }
 val LocalDisableAnimations = staticCompositionLocalOf { false }
@@ -79,7 +79,7 @@ fun ArchiveTuneTheme(
 ) {
     val context = LocalContext.current
     val useSystemDynamicColor =
-        (seedPalette == null && themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        false
 
     val customFontFamily =
         produceState<FontFamily?>(
