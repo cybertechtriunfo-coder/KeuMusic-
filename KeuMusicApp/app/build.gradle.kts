@@ -47,7 +47,7 @@ val isCanary = findProperty("canary")?.toString()?.toBoolean() == true
 
 android {
     namespace = "moe.rukamori.archivetune"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
     applicationId = "re.muwmix.yumaplayer"
