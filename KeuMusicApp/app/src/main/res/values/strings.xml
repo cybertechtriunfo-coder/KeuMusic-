@@ -1705,14 +1705,14 @@
     <string name="storage_folder_selected_restart">Storage folder saved. App will restart in 3 seconds.</string>
     <string name="storage_folder_invalid">Select a valid folder.</string>
     <string name="storage_folder_unsupported">This folder cannot be used by the file-backed media cache.</string>
-    <string name="storage_folder_not_writable">YumaPlayer cannot write cache files in this folder.</string>
+    <string name="storage_folder_not_writable">KeuMusic cannot write cache files in this folder.</string>
     <string name="storage_cache_cleared">Cache cleared.</string>
     <string name="storage_cache_clear_failed">Cache could not be cleared. Check SD card access.</string>
     <string name="storage_clear_song_cache_progress">Clearing song cache...%1$d%%</string>
     <string name="storage_clear_downloads_progress">Clearing downloads...%1$d%%</string>
     <string name="storage_clear_image_cache_progress">Clearing image cache...%1$d%%</string>
     <string name="storage_clear_canvas_cache_progress">Clearing canvas cache...%1$d%%</string>
-    <string name="storage_cache_clear_warning">Keep YumaPlayer open while cache files are being removed.</string>
+    <string name="storage_cache_clear_warning">Keep KeuMusic open while cache files are being removed.</string>
     <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="sensitivity_percentage">%1$d%%</string>
     <string name="clear_song_cache_dialog">  Are you sure you want to clear all cached songs?</string>
@@ -1782,8 +1782,8 @@
     <string name="player_stream_client_android_vr_desc">Streams directly without signature decryption, providing maximum speed. Suitable for the majority of users.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Extended format support at the cost of speed. JavaScript signature decryption introduces a ~5–10 second startup delay.</string>
-    <string name="player_stream_client_archivetune_extractor">YumaPlayer Extractor</string>
-    <string name="player_stream_client_archivetune_extractor_desc">Uses the YumaPlayer backend extractor for playback streams. Prefer Auto High Quality Audio.</string>
+    <string name="player_stream_client_archivetune_extractor">KeuMusic Extractor</string>
+    <string name="player_stream_client_archivetune_extractor_desc">Uses the KeuMusic backend extractor for playback streams. Prefer Auto High Quality Audio.</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_appearance_subtitle">Themes, layout, and visual styles</string>
     <string name="settings_playback_title">Playback</string>
@@ -1948,7 +1948,7 @@
     <string name="about_contributor_translation">Contributor Translation</string>
     <string name="about_license">LICENSE</string>
     <string name="about_license_unknown">Unknown license</string>
-    <string name="about_position_lead_dev">Certified Weeb</string>
+    <string name="about_position_lead_dev">Cleudeson Soares</string>
     <string name="about_position_developers">Developer | Team</string>
     <string name="about_position_mo_agamy">Base Framework | Metrolist</string>
     <string name="about_position_zion_huang">Creator of InnerTune · Foundation for Metrolist, YumaPlayer, and other forks</string>
