@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "moe.rukamori.archivetune.audiodsp"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26

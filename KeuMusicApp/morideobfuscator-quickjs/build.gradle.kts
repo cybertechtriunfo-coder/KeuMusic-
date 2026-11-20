@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "moe.rukamori.archivetune.obfuscator.quickjs"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26

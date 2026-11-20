@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "moe.rukamori.archivetune.designsystem"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26
