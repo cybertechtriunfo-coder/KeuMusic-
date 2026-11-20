@@ -1,0 +1,28 @@
+name: KeuMusic Android Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - keumusic-audio-engine
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compilar APK
+        run: ./gradlew :app:assembleDebug
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeuMusic-debug
+          path: app/build/outputs/apk/debug/*.apk
