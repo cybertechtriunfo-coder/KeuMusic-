@@ -1,0 +1,30 @@
+/*
+ * KeuMusic (2026) | Modified work by MuwMix
+ * ArchiveTune (2026) | Original work by © Rukamori
+ * GPL-3.0 License | Contributors: see git history
+ */
+
+package moe.rukamori.archivetune.ui.screens.settings
+
+import androidx.compose.runtime.Immutable
+import moe.rukamori.archivetune.about.AboutScreenState
+
+
+typealias AboutUiState = AboutScreenState
+
+@Immutable
+data class AboutUiActions(
+    val onNavigateUp: () -> Unit = {},
+    val onNavigateHome: () -> Unit = {},
+    val onOpenUri: (String) -> Unit = {},
+    val onShowOverflowMenu: () -> Unit = {},
+    val onDismissOverflowMenu: () -> Unit = {},
+    val onOpenTranslationContributors: () -> Unit = {},
+    val onOpenDependencyLicenses: () -> Unit = {},
+    val onDismissDialog: () -> Unit = {},
+    val onRetryTranslationContributors: () -> Unit = {},
+    val onRetryDependencyLicenses: () -> Unit = {},
+    val onRetryContributors: () -> Unit = {},
+)
+
+typealias AboutActions = AboutUiActions
