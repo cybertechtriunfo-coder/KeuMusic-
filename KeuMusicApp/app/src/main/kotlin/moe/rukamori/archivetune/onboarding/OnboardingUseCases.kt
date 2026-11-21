@@ -142,7 +142,7 @@ class BuildOnboardingUiStateUseCase
                         titleResId = R.string.support_development_star,
                         descriptionResId = R.string.onboarding_community_github_desc,
                         iconResId = R.drawable.ic_github,
-                        url = "https://github.com/MuwMx/YumaPlayer",
+                        url = "https://github.com/MuwMx/KeuMusic",
                     ),
                     OnboardingCommunityActionUiModel(
                         id = "telegram",

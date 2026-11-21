@@ -190,7 +190,7 @@ fun BoxScope.GlobalDialogsHost(
                             }
                         } else {
                             Updater.getLatestDownloadUrl().ifBlank {
-                                "https://github.com/MuwMx/YumaPlayer/releases/latest"
+                                "https://github.com/MuwMx/KeuMusic/releases/latest"
                             }
                         }
                     try {

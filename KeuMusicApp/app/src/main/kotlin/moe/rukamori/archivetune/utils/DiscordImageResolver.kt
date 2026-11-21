@@ -133,7 +133,7 @@ object DiscordImageResolver {
             }
 
             "appicon" -> {
-                "https://raw.githubusercontent.com/MuwMx/YumaPlayer/main/assets/ic_launcher.webp" // legacy icon path not yet migrated to fastlane
+                "https://raw.githubusercontent.com/MuwMx/KeuMusic/main/assets/ic_launcher.webp" // legacy icon path not yet migrated to fastlane
             }
 
             "custom" -> {

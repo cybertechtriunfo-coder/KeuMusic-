@@ -300,7 +300,7 @@ class AiContentFilterRepository
                 "https://raw.githubusercontent.com/Override92/AiSList/main/AiSList/aislist_blocklist.txt"
             private const val WARNLIST_URL =
                 "https://raw.githubusercontent.com/Override92/AiSList/main/AiSList/aislist_warnlist.txt"
-            private const val USER_AGENT = "YumaPlayer-AiContentFilter"
+            private const val USER_AGENT = "KeuMusic-AiContentFilter"
             private const val MAX_RESPONSE_BYTES = 5 * 1024 * 1024
             private const val BUFFER_SIZE_BYTES = 8 * 1024
             private const val REFRESH_INTERVAL_MILLIS = 4 * 60 * 60 * 1000L

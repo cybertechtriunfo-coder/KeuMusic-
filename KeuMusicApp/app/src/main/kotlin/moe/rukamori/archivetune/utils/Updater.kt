@@ -53,7 +53,7 @@ private data class ReleasesNetworkResult(
 object Updater {
     private val client = HttpClient()
     private const val ReleaseCacheCheckIntervalMs: Long = 6 * 60 * 60 * 1000L
-    private const val StableReleaseBaseUrl = "https://github.com/MuwMx/YumaPlayer/releases"
+    private const val StableReleaseBaseUrl = "https://github.com/MuwMx/KeuMusic/releases"
     private const val CanaryReleaseBaseUrl = "https://github.com/MuwMx/YumaCanary/releases"
     private val GitHubCanaryReleasesEtagKey = stringPreferencesKey("github_canary_releases_etag")
     private val GitHubCanaryReleasesJsonKey = stringPreferencesKey("github_canary_releases_json")
@@ -400,12 +400,12 @@ object Updater {
         cachedEtag: String?,
         isCanary: Boolean = false,
     ): ReleasesNetworkResult {
-        val repo = if (isCanary) "MuwMx/YumaCanary" else "MuwMx/YumaPlayer"
+        val repo = if (isCanary) "MuwMx/YumaCanary" else "MuwMx/KeuMusic"
         val response: HttpResponse =
             client.get("https://api.github.com/repos/$repo/releases?per_page=$perPage") {
                 headers {
                     append("Accept", "application/vnd.github+json")
-                    append("User-Agent", "YumaPlayerApp")
+                    append("User-Agent", "KeuMusicApp")
                     if (!cachedEtag.isNullOrBlank()) {
                         append("If-None-Match", cachedEtag)
                     }
@@ -608,13 +608,13 @@ object Updater {
     ): Result<List<GitCommit>> =
         runCatching {
             val url = if (branch.isNotBlank()) {
-                "https://api.github.com/repos/MuwMx/YumaPlayer/commits?sha=$branch&per_page=$count"
+                "https://api.github.com/repos/MuwMx/KeuMusic/commits?sha=$branch&per_page=$count"
             } else {
-                "https://api.github.com/repos/MuwMx/YumaPlayer/commits?per_page=$count"
+                "https://api.github.com/repos/MuwMx/KeuMusic/commits?per_page=$count"
             }
             val response = client.get(url) {
                 headers {
-                    append("User-Agent", "YumaPlayerApp")
+                    append("User-Agent", "KeuMusicApp")
                     append("Accept", "application/vnd.github+json")
                 }
             }.bodyAsText()

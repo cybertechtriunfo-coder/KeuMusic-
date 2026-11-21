@@ -63,10 +63,10 @@ internal fun buildAboutUiModel(
         profileUrl = "https://www.instagram.com/cleudeson_soares?bqrl=MWlzOGdkb2w1MW04bQ==",
         links = AboutLinkCollection.of(
             AboutLinkUiModel(
-                id = "github",
-                iconResId = R.drawable.ic_github,
-                labelResId = R.string.about_content_desc_github,
-                url = "https://github.com/cybertechtriunfo-coder/KeuMusic-",
+                id = "instagram_personal",
+                iconResId = R.drawable.instagram,
+                labelResId = R.string.about_content_desc_instagram,
+                url = "https://www.instagram.com/cleudeson_soares?bqrl=MWlzOGdkb2w1MW04bQ==",
             ),
         ),
     ),

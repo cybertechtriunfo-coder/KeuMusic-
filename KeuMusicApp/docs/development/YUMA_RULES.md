@@ -1,6 +1,6 @@
 # Yuma Rules
 
-This document defines the mandatory engineering rules for YumaPlayer.
+This document defines the mandatory engineering rules for KeuMusic.
 
 These rules apply to all contributions, whether written by human contributors or AI assistants.
 

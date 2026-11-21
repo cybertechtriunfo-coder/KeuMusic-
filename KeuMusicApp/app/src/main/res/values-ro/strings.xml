@@ -144,7 +144,7 @@
     <string name="radio">Radiou</string>
     <string name="cast">Cast</string>
     <string name="cast_devices">Dispozitive Cast</string>
-    <string name="cast_sheet_subtitle">Alege unde redă YumaPlayer</string>
+    <string name="cast_sheet_subtitle">Alege unde redă KeuMusic</string>
     <string name="cast_available_devices">Dispozitive disponibile</string>
     <string name="cast_searching_devices">Se caută dispozitive</string>
     <string name="cast_no_devices">Nu a fost găsit niciun dispozitiv Cast</string>
@@ -167,7 +167,7 @@
     <string name="play">Play</string>
     <string name="widget_pause">Pauză</string>
     <string name="widget_previous">Precedent</string>
-    <string name="widget_tap_to_open">Atinge pentru a deschide YumaPlayer</string>
+    <string name="widget_tap_to_open">Atinge pentru a deschide KeuMusic</string>
     <string name="widget_insights_title">Informații din ascultare</string>
     <string name="widget_recommendations">Recomandări</string>
     <string name="widget_listening_time_empty">Încă nu există timp de ascultare</string>

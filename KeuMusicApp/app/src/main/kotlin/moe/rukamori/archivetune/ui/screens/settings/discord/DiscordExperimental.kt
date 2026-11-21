@@ -95,7 +95,7 @@ fun DiscordExperimental(navController: NavController) {
     val (button2CustomUrl, onButton2CustomUrlChange) =
         rememberPreference(
             key = DiscordActivityButton2CustomUrlKey,
-            defaultValue = "https://github.com/MuwMx/YumaPlayer",
+            defaultValue = "https://github.com/MuwMx/KeuMusic",
         )
 
     val hazeState = remember { HazeState() }

@@ -1,6 +1,6 @@
-# YumaPlayer Coding Standard
+# KeuMusic Coding Standard
 
-This document defines the official code style, architectural conventions, and implementation patterns for YumaPlayer. All Kotlin and Compose code must comply with these standards.
+This document defines the official code style, architectural conventions, and implementation patterns for KeuMusic. All Kotlin and Compose code must comply with these standards.
 
 ---
 

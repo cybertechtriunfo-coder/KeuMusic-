@@ -1,6 +1,6 @@
-# YumaPlayer Architecture Overview
+# KeuMusic Architecture Overview
 
-This document outlines the architectural blueprint of YumaPlayer. The application is built following **Clean Architecture** principles combined with **Unidirectional Data Flow (UDF)**, ensuring high testability, feature isolation, and strict separation of concerns.
+This document outlines the architectural blueprint of KeuMusic. The application is built following **Clean Architecture** principles combined with **Unidirectional Data Flow (UDF)**, ensuring high testability, feature isolation, and strict separation of concerns.
 
 ---
 

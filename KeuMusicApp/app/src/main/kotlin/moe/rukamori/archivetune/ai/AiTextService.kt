@@ -34,8 +34,8 @@ object AiTextService {
     private const val ClaudeModelsEndpoint = "https://api.anthropic.com/v1/models"
     private const val OpenRouterEndpoint = "https://openrouter.ai/api/v1/chat/completions"
     private const val OpenRouterModelsEndpoint = "https://openrouter.ai/api/v1/models?output_modalities=text"
-    private const val OpenRouterReferer = "https://github.com/MuwMx/YumaPlayer"
-    private const val OpenRouterTitle = "YumaPlayer"
+    private const val OpenRouterReferer = "https://github.com/MuwMx/KeuMusic"
+    private const val OpenRouterTitle = "KeuMusic"
 
     private val client =
         HttpClient(OkHttp) {

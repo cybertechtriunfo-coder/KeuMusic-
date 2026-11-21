@@ -170,8 +170,8 @@ class ReleaseNotesParserTest {
     fun `canary prose is kept as one uncounted section`() {
         val notes =
             """
-            ## ⚡ YumaPlayer Canary (2026-10-21)
-            Automated test build from [`MuwMx/YumaPlayer:main`](https://github.com/MuwMx/YumaPlayer).
+            ## ⚡ KeuMusic Canary (2026-10-21)
+            Automated test build from [`MuwMx/KeuMusic:main`](https://github.com/MuwMx/KeuMusic).
 
             > ⚠️ **Notice:** Contains experimental changes and works in progress.
             """.trimIndent()

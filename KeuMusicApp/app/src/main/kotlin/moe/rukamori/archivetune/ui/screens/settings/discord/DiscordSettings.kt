@@ -346,7 +346,7 @@ fun DiscordSettings(navController: NavController) {
     val (button2CustomUrl) =
         rememberPreference(
             key = DiscordActivityButton2CustomUrlKey,
-            defaultValue = "https://github.com/MuwMx/YumaPlayer",
+            defaultValue = "https://github.com/MuwMx/KeuMusic",
         )
 
     val (activityType, onActivityTypeChange) =
@@ -1006,7 +1006,7 @@ fun RichPresence(
     button2Label: String = "Go to Yuma",
     button2Enabled: Boolean = true,
     button2UrlSource: String = "custom",
-    button2CustomUrl: String = "https://github.com/MuwMx/YumaPlayer",
+    button2CustomUrl: String = "https://github.com/MuwMx/KeuMusic",
     isPlaying: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -1117,7 +1117,7 @@ fun RichPresence(
                                 when (largeImageType.lowercase()) {
                                     "thumbnail" -> song?.song?.thumbnailUrl
                                     "artist" -> song?.artists?.firstOrNull()?.thumbnailUrl
-                                    "appicon" -> "https://raw.githubusercontent.com/MuwMx/YumaPlayer/main/assets/ic_launcher.webp"
+                                    "appicon" -> "https://raw.githubusercontent.com/MuwMx/KeuMusic/main/assets/ic_launcher.webp"
                                     "custom" -> largeImageCustomUrl.ifBlank { song?.song?.thumbnailUrl }
                                     else -> song?.song?.thumbnailUrl
                                 }
@@ -1147,7 +1147,7 @@ fun RichPresence(
                                 when (smallImageType.lowercase()) {
                                     "thumbnail" -> songThumb
                                     "artist" -> artistThumb
-                                    "appicon" -> "https://raw.githubusercontent.com/MuwMx/YumaPlayer/main/assets/ic_launcher.webp"
+                                    "appicon" -> "https://raw.githubusercontent.com/MuwMx/KeuMusic/main/assets/ic_launcher.webp"
                                     "custom" -> smallImageCustomUrl.takeIf { it.isNotBlank() } ?: songThumb
                                     "dontshow", "none" -> null
                                     else -> artistThumb

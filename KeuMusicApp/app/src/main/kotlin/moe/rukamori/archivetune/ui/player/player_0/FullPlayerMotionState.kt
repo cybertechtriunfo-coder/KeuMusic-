@@ -1,6 +1,6 @@
 /*
  * KeuMusic (2026) | Original work by MuwMix
- * https://github.com/MuwMx/YumaPlayer
+ * https://github.com/MuwMx/KeuMusic
  * GPL-3.0 License | Contributors: see git history
  */
 

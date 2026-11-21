@@ -192,25 +192,6 @@ fun buildSettingsGroups(
                                 ),
                             )
                         }
-                        if (BuildConfig.UPDATER_AVAILABLE) {
-                            add(
-                                SettingsItem(
-                                    key = "updates",
-                                    icon = painterResource(R.drawable.ic_refresh),
-                                    title = stringResource(R.string.updates),
-                                    subtitle =
-                                        if (hasUpdate) {
-                                            stringResource(R.string.new_version_available)
-                                        } else {
-                                            stringResource(R.string.settings_updates_subtitle)
-                                        },
-                                    showUpdateIndicator = hasUpdate,
-                                    badge = if (hasUpdate) "v${BuildConfig.VERSION_NAME}" else BuildConfig.VERSION_NAME,
-                                    accentColor = MaterialTheme.colorScheme.primary,
-                                    onClick = { navController.navigate("settings/update") },
-                                ),
-                            )
-                        }
                         add(
                             SettingsItem(
                                 key = "about",

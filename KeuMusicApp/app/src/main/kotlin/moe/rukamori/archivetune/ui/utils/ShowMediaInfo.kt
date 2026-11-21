@@ -408,7 +408,7 @@ fun ShowMediaInfo(videoId: String) {
 }
 
 /**
- * Фирменная стильная кнопка действия YumaPlayer с правильной иконкой 18dp
+ * Фирменная стильная кнопка действия KeuMusic с правильной иконкой 18dp
  */
 @Composable
 private fun MediaInfoActionButton(
@@ -463,7 +463,7 @@ private fun MediaInfoActionButton(
 }
 
 /**
- * Переключатель вкладок в дизайне YumaPlayer
+ * Переключатель вкладок в дизайне KeuMusic
  */
 @Composable
 private fun MediaInfoTabSelector(

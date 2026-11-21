@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="assets/yuma_logo.png" width="240" height="240" alt="YumaPlayer Icon" style="border-radius: 28px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+<img src="assets/yuma_logo.png" width="240" height="240" alt="KeuMusic Icon" style="border-radius: 28px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
 
-  <h1>YumaPlayer (Yuma)</h1>
+  <h1>KeuMusic (Yuma)</h1>
 
   <p>
     <strong>A hybrid music client for Android focused on usability, clean aesthetics, and audiophile-grade sound.</strong><br>
@@ -19,9 +19,9 @@
   </p>
 
  <div>
-      <img src="https://img.shields.io/github/v/release/MuwMx/YumaPlayer?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Latest Release" />
-      <img src="https://img.shields.io/github/stars/MuwMx/YumaPlayer?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="GitHub Stars" />
-      <img src="https://img.shields.io/github/downloads/MuwMx/YumaPlayer/total?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Downloads" />
+      <img src="https://img.shields.io/github/v/release/MuwMx/KeuMusic?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Latest Release" />
+      <img src="https://img.shields.io/github/stars/MuwMx/KeuMusic?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="GitHub Stars" />
+      <img src="https://img.shields.io/github/downloads/MuwMx/KeuMusic/total?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Downloads" />
       <img src="https://img.shields.io/badge/License-GPLv3-6366f1?style=for-the-badge&logo=gnu&logoColor=white&labelColor=1e1e2e" alt="License: GPLv3" />
       <img src="https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white&labelColor=1e1e2e" alt="Android 8.0+" />
       <a href="https://t.me/yumaplayer"><img src="https://img.shields.io/badge/Telegram-Community-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white&labelColor=1e1e2e" alt="Telegram" /></a>
@@ -31,7 +31,7 @@
   
   <p align="center">
     <a href="https://trendshift.io/repositories/202305?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-202305" target="_blank" rel="noopener noreferrer">
-      <img src="https://trendshift.io/api/badge/trendshift/repositories/202305/daily?language=Kotlin" alt="MuwMx%2FYumaPlayer | Trendshift" width="250" height="55"/>
+      <img src="https://trendshift.io/api/badge/trendshift/repositories/202305/daily?language=Kotlin" alt="MuwMx%2FKeuMusic | Trendshift" width="250" height="55"/>
     </a>
   </p>
 
@@ -41,9 +41,9 @@
 
 ## 🌟 About the Project
 
-**YumaPlayer** is an independent, open-source Android music player that unites the libraries and recommendation features of two leading streaming services alongside standalone local playback in Hi-Res quality.
+**KeuMusic** is an independent, open-source Android music player that unites the libraries and recommendation features of two leading streaming services alongside standalone local playback in Hi-Res quality.
 
-The project evolved as a comprehensive rebuild of **ArchiveTune** (with foundations from **Metrolist** and **SimpMusic**), inspired by **PixelPlayer's** queue mechanics, **Meld's** Spotify integration pipeline, and **Stash's** FLAC architecture. On top of this base, YumaPlayer implements a modular 20-module architecture, a dedicated low-level audio DSP engine, the custom **YDS 2.1** design system, and hardware-accelerated fluid gesture physics.
+The project evolved as a comprehensive rebuild of **ArchiveTune** (with foundations from **Metrolist** and **SimpMusic**), inspired by **PixelPlayer's** queue mechanics, **Meld's** Spotify integration pipeline, and **Stash's** FLAC architecture. On top of this base, KeuMusic implements a modular 20-module architecture, a dedicated low-level audio DSP engine, the custom **YDS 2.1** design system, and hardware-accelerated fluid gesture physics.
 
 No subscriptions. No advertisements. Zero telemetry, crash reporters, or third-party trackers. All credentials live exclusively on your device, encrypted with AES-256-GCM via Google Tink, and the codebase is completely open under the GNU General Public License v3.0.
 
@@ -164,7 +164,7 @@ https://github.com/user-attachments/assets/d363db0c-522b-4694-bd19-0dd9155ca240
     <tbody>
       <tr>
         <td align="center">
-          <a href="https://github.com/MuwMx/YumaPlayer/releases/latest">
+          <a href="https://github.com/MuwMx/KeuMusic/releases/latest">
             <img src="https://img.shields.io/badge/GitHub_Releases-Download_APK-7C4DFF?style=for-the-badge&logo=github" height="40" alt="GitHub Releases">
           </a>
         </td>
@@ -179,7 +179,7 @@ https://github.com/user-attachments/assets/d363db0c-522b-4694-bd19-0dd9155ca240
           </a>
         </td>
         <td align="center">
-          <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/MuwMx/YumaPlayer">
+          <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/MuwMx/KeuMusic">
             <img src="https://img.shields.io/badge/Obtainium-Auto_Updates-purple?style=for-the-badge&logo=android" height="40" alt="Add to Obtainium">
           </a>
         </td>
@@ -190,8 +190,8 @@ https://github.com/user-attachments/assets/d363db0c-522b-4694-bd19-0dd9155ca240
 
 ### Building from Source
 ```bash
-git clone https://github.com/MuwMx/YumaPlayer.git
-cd YumaPlayer
+git clone https://github.com/MuwMx/KeuMusic.git
+cd KeuMusic
 ./gradlew assembleRelease
 # Built APK will be located at: app/build/outputs/apk/release/
 ```
@@ -201,7 +201,7 @@ cd YumaPlayer
 
 ## 🏛️ Architecture & Tech Stack
 
-YumaPlayer is organized as a 20-module Clean Architecture project following Unidirectional Data Flow (UDF):
+KeuMusic is organized as a 20-module Clean Architecture project following Unidirectional Data Flow (UDF):
 
 - **UI & Presentation:** Jetpack Compose, YDS 2.1 design tokens, GPU-accelerated Haze overlays, fluid gesture physics.
 - **Audio Engine:** Media3 (ExoPlayer), `:core:audio-dsp` (Smart Automix, dual-deck continuous crossfader, DJ filter cascade).
@@ -218,7 +218,7 @@ YumaPlayer is organized as a 20-module Clean Architecture project following Unid
 
 ## 🌍 Globalization & Localization
 
-YumaPlayer is localized into multiple languages thanks to our community translators. The localization pipeline is continuously synchronized with the codebase via [Hosted Weblate](https://hosted.weblate.org/).
+KeuMusic is localized into multiple languages thanks to our community translators. The localization pipeline is continuously synchronized with the codebase via [Hosted Weblate](https://hosted.weblate.org/).
 
 <div align="center">
   <a href="https://hosted.weblate.org/engage/yumaplayer/">
@@ -232,7 +232,7 @@ YumaPlayer is localized into multiple languages thanks to our community translat
 
 ## ⚙️ Account Setup
 
-YumaPlayer is fully functional out of the box without signing in. Logging in is optional and only required to sync personal playlists, likes, and recommendations:
+KeuMusic is fully functional out of the box without signing in. Logging in is optional and only required to sync personal playlists, likes, and recommendations:
 
 ### 🎵 Connecting Spotify
 1. Open **Settings** → **Account** → **Spotify** → Tap **Log In**.
@@ -248,7 +248,7 @@ Two login methods are supported:
 
 ## ☕ Support the Project
 
-YumaPlayer is free, open source, and has no ads or subscriptions. If you enjoy using the player and wish to support ongoing development:
+KeuMusic is free, open source, and has no ads or subscriptions. If you enjoy using the player and wish to support ongoing development:
 
 - **Solana (SOL, USDT, USDC):**  
   `DT3ckdbNuiQMR1mrCpBXCMrhLB19GckVv3YfxsLLiF8z`
@@ -260,8 +260,8 @@ YumaPlayer is free, open source, and has no ads or subscriptions. If you enjoy u
 ## 📈 Star History
 
 <p align="center">
-  <a href="https://star-history.com/#MuwMx/YumaPlayer&Date">
-    <img src="https://api.star-history.com/svg?repos=MuwMx/YumaPlayer&type=Date&theme=dark" alt="Star History Chart" width="100%" />
+  <a href="https://star-history.com/#MuwMx/KeuMusic&Date">
+    <img src="https://api.star-history.com/svg?repos=MuwMx/KeuMusic&type=Date&theme=dark" alt="Star History Chart" width="100%" />
   </a>
 </p>
 
@@ -277,8 +277,8 @@ Contributions make open-source projects thrive! Whether you are fixing bugs, pro
 ### 👥 Contributors
 
 <div align="center">
-  <a href="https://github.com/MuwMx/YumaPlayer/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=MuwMx/YumaPlayer" alt="Contributors" />
+  <a href="https://github.com/MuwMx/KeuMusic/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=MuwMx/KeuMusic" alt="Contributors" />
   </a>
 </div>
 
@@ -286,7 +286,7 @@ Contributions make open-source projects thrive! Whether you are fixing bugs, pro
 
 ## 🤝 Acknowledgments (Open-Source Credits)
 
-YumaPlayer is built on the shoulders of the open-source community:
+KeuMusic is built on the shoulders of the open-source community:
 
 - **[ArchiveTune](https://github.com/rukamori/ArchiveTune)** — for the solid playback foundations, rich settings base, and core architecture.
 - **[Meld](https://github.com/FrancescoGrazioso/Meld)** — for the conceptual breakthrough and implementation of the Spotify hybrid integration.
@@ -302,11 +302,11 @@ YumaPlayer is built on the shoulders of the open-source community:
 ## ⚖️ License & Legal Disclaimer
 
 ### License
-YumaPlayer is free software licensed under the **GNU General Public License v3.0 (GPLv3)**.  
+KeuMusic is free software licensed under the **GNU General Public License v3.0 (GPLv3)**.  
 You may freely copy, modify, and redistribute the source code provided you preserve copyright notices and distribute derivative works under the same GPL-3.0 license.
 
 ### Disclaimer
-YumaPlayer is an independent third-party client. It is **not affiliated with, endorsed by, or sponsored by Google LLC, YouTube Music, or Spotify AB**. The application is provided for personal use only as a tool for managing your own library.
+KeuMusic is an independent third-party client. It is **not affiliated with, endorsed by, or sponsored by Google LLC, YouTube Music, or Spotify AB**. The application is provided for personal use only as a tool for managing your own library.
 
 ---
 

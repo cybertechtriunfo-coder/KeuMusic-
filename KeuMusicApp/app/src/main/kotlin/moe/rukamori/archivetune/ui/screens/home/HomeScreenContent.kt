@@ -100,7 +100,7 @@ internal fun HomeContent(
                     connection = headerScrollConnection,
                     lazyListState = lazyListState,
                     hasCollapsibleHeader = isHeroPresent,
-                    collapseDistance = 360.dp,
+                    collapseDistance = 560.dp,
                     standardThreshold = 48.dp,
                 )
 

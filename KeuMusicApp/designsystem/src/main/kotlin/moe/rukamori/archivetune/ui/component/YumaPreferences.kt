@@ -40,7 +40,7 @@ import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 
 /**
- * Стеклянный контейнер категории настроек YumaPlayer.
+ * Стеклянный контейнер категории настроек KeuMusic.
  */
 @Composable
 fun YumaPreferenceCategory(
@@ -76,10 +76,10 @@ fun YumaPreferenceCategory(
 }
 
 /**
- * Строка настроек YumaPlayer — плашка с 16dp отступами и упругим сжатием ВСЕЙ КАРТОЧКИ целиком.
+ * Строка настроек KeuMusic — плашка с 16dp отступами и упругим сжатием ВСЕЙ КАРТОЧКИ целиком.
  */
 /**
- * Строка настроек YumaPlayer — 1 в 1 как SettingsMenuRow из шторки плеера.
+ * Строка настроек KeuMusic — 1 в 1 как SettingsMenuRow из шторки плеера.
  * Мгновенный отклик клика, темная плашка Color(0x0DFFFFFF), без 1dp граней.
  */
 @Composable
@@ -185,7 +185,7 @@ fun YumaPreferenceRow(
 }
 
 /**
- * Строка настроек YumaPlayer со Switch — 1 в 1 как в шторке плеера.
+ * Строка настроек KeuMusic со Switch — 1 в 1 как в шторке плеера.
  */
 @Composable
 fun YumaSwitchPreferenceRow(

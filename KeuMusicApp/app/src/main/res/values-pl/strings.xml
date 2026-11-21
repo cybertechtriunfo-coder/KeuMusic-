@@ -127,7 +127,7 @@
     <string name="change_playlist_cover">Zmień okładkę playlisty</string>
     <string name="retry">Spróbuj ponownie</string>
     <string name="radio">Radio</string>
-    <string name="cast_sheet_subtitle">Wybierz, gdzie YumaPlayer odtwarza</string>
+    <string name="cast_sheet_subtitle">Wybierz, gdzie KeuMusic odtwarza</string>
     <string name="cast_available_devices">Dostępne urzadzenia</string>
     <string name="cast_searching_devices">Szukanie urządzeń</string>
     <string name="stats_axis_12am">0</string>
@@ -345,7 +345,7 @@
     <string name="app_icon_available">Dostępne ikonki</string>
     <string name="app_icon_builtin">Wbudowana</string>
     <string name="app_icon_community">Ikonka społeczności</string>
-    <string name="app_icon_builtin_description">Oryginalna ikonka YumaPlayer</string>
+    <string name="app_icon_builtin_description">Oryginalna ikonka KeuMusic</string>
     <string name="app_icon_identifier">ID %1$s</string>
     <string name="app_icon_community_notice">Ikonki społeczności są tworzone przez użytkowników i mogą się zmienić.</string>
     <plurals name="app_icon_count">
@@ -421,7 +421,7 @@
     <string name="contrast">Kontrast</string>
     <string name="brightness">Jasność</string>
     <string name="custom_value">Własna wartość</string>
-    <string name="archivetune_canvas">Canvy YumaPlayer</string>
+    <string name="archivetune_canvas">Canvy KeuMusic</string>
     <string name="player_background_style_v8_v9_desc">Niedostępne z V8 i V9 stylami odtwarzania</string>
     <string name="show_button2_description">Włąc/wyłącz widoczność przycisku 2 w Discord Rich Presence</string>
     <string name="discord_activity_type">Typ aktywności</string>
@@ -457,7 +457,7 @@
     <string name="login">Login</string>
     <string name="login_browser">Przeglądarka internetowa</string>
     <string name="not_logged_in">Niezalogowany</string>
-    <string name="playback_requires_youtube_music_confirmation">Potwierdź odtwarzanie w Youtube Music, a potem wróć do YumaPlayer.</string>
+    <string name="playback_requires_youtube_music_confirmation">Potwierdź odtwarzanie w Youtube Music, a potem wróć do KeuMusic.</string>
     <string name="playback_login_refresh_required">Odśwież login YouTube Music</string>
     <string name="hide_video">Chowaj widea muzyczne</string>
     <string name="ai_content_filter">Filter treści AI</string>

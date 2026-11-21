@@ -135,7 +135,7 @@
     <string name="radio">வானொலி</string>
     <string name="cast">ஒளிபரப்பு</string>
     <string name="cast_devices">ஒளிபரப்பு சாதனங்கள்</string>
-    <string name="cast_sheet_subtitle">YumaPlayer பாடலை எங்கு இயக்க வேண்டும் என்பதைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="cast_sheet_subtitle">KeuMusic பாடலை எங்கு இயக்க வேண்டும் என்பதைத் தேர்ந்தெடுக்கவும்</string>
     <string name="cast_available_devices">அருகிலுள்ள சாதனங்கள்</string>
     <string name="cast_searching_devices">சாதனங்களைத் தேடுகிறது</string>
     <string name="cast_no_devices">ஒளிபரப்பு சாதனங்கள் எதுவும் காணப்படவில்லை</string>

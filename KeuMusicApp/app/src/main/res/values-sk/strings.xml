@@ -75,7 +75,7 @@
     <string name="radio">Radio</string>
     <string name="cast">Obsadenie</string>
     <string name="cast_devices">Zariadenia s funkciou Cast</string>
-    <string name="cast_sheet_subtitle">Vyberte, kde má YumaPlayer prehrávať</string>
+    <string name="cast_sheet_subtitle">Vyberte, kde má KeuMusic prehrávať</string>
     <string name="cast_available_devices">Dostupné zariadenia</string>
     <string name="cast_searching_devices">Vyhľadávanie zariadení</string>
     <string name="cast_no_devices">Nenašli sa žiadne zariadenia Cast</string>
@@ -98,7 +98,7 @@
     <string name="play">Prehrať</string>
     <string name="widget_pause">Zastaviť</string>
     <string name="widget_previous">Predošlé</string>
-    <string name="widget_tap_to_open">Ťuknutím otvoríte YumaPlayer</string>
+    <string name="widget_tap_to_open">Ťuknutím otvoríte KeuMusic</string>
     <string name="widget_insights_title">Poznatky z počúvania</string>
     <string name="widget_recommendations">Odporúčania</string>
     <string name="widget_listening_time_empty">Zatiaľ žiadny čas počúvania</string>
@@ -296,7 +296,7 @@
     <string name="contrast">Kontrast</string>
     <string name="brightness">Jas</string>
     <string name="custom_value">Vlastná hodnota</string>
-    <string name="archivetune_canvas">Plátno YumaPlayer</string>
+    <string name="archivetune_canvas">Plátno KeuMusic</string>
     <string name="archivetune_canvas_desc">Animovať obal albumu počas prehrávania (poháňané službou BetterLyrics)</string>
     <string name="player_background_style_v8_v9_desc">Nie je k dispozícii so štýlmi prehrávača V8 a V9</string>
     <string name="show_button1_description">Prepnúť viditeľnosť tlačidla 1 v Discord Rich Presence</string>
@@ -425,9 +425,9 @@
     <string name="login_browser">Webový prehliadač</string>
     <string name="not_logged_in">Neprihlásený</string>
     <string name="playback_confirmation_required">Vyžaduje sa potvrdenie prehrávania</string>
-    <string name="playback_requires_youtube_music_confirmation">Potvrďte prehrávanie v YouTube Music a následne sa vráťte do aplikácie YumaPlayer.</string>
+    <string name="playback_requires_youtube_music_confirmation">Potvrďte prehrávanie v YouTube Music a následne sa vráťte do aplikácie KeuMusic.</string>
     <string name="playback_login_refresh_required">Obnoviť prihlásenie do YouTube Music</string>
-    <string name="playback_requires_youtube_music_login_refresh">Obnovte svoje prihlásenie do YouTube Music a potom sa vráťte do aplikácie YumaPlayer.</string>
+    <string name="playback_requires_youtube_music_login_refresh">Obnovte svoje prihlásenie do YouTube Music a potom sa vráťte do aplikácie KeuMusic.</string>
     <string name="could_not_open_youtube_music">Nepodarilo sa otvoriť YouTube Music</string>
     <string name="playback_error_code">Kód</string>
     <string name="playback_error_message">Správa</string>

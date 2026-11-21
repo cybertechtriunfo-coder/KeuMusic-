@@ -1,18 +1,18 @@
-# YumaPlayer Documentation
+# KeuMusic Documentation
 
-This directory contains internal documentation for YumaPlayer.
+This directory contains internal documentation for KeuMusic.
 
 It is the primary entry point for contributors and AI assistants working on the project.
 
 ---
 
-## About YumaPlayer
+## About KeuMusic
 
-YumaPlayer is a modular Android music player focused on maintainability, modularity, and a consistent user experience.
+KeuMusic is a modular Android music player focused on maintainability, modularity, and a consistent user experience.
 
 The project combines YouTube Music streaming, lossless FLAC streaming, local playback, synchronized lyrics, Spotify Canvas visualizers, Shazam track recognition, and multiple optional service integrations while keeping every subsystem isolated in dedicated modules.
 
-Originally evolved from ArchiveTune (with core dependencies traced back to Metrolist and SimpMusic), YumaPlayer has developed into an independent project with its own architecture, design system, and engineering standards.
+Originally evolved from ArchiveTune (with core dependencies traced back to Metrolist and SimpMusic), KeuMusic has developed into an independent project with its own architecture, design system, and engineering standards.
 
 ### Architecture Overview
 
