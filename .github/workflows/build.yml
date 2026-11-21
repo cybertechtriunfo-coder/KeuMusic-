@@ -22,7 +22,11 @@ jobs:
         with:
           packages: "platform-tools"
       - name: Instalar dependencias Android
-        run: sdkmanager "platforms;android-37" "cmake;3.22.1"
+        run: sdkmanager "platforms;android-37.0" "cmake;3.22.1"
+      - name: Corrigir caminho do Android SDK 37
+        run: |
+          SDK_PLATFORMS="$ANDROID_HOME/platforms"
+          ln -sfn android-37.0 "$SDK_PLATFORMS/android-37"
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Compilar KeuMusic Release ARM64

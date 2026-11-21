@@ -21,7 +21,11 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: "platform-tools"
-      - run: sdkmanager "platforms;android-37" "cmake;3.22.1"
+      - run: sdkmanager "platforms;android-37.0" "cmake;3.22.1"
+      - name: Corrigir caminho do Android SDK 37
+        run: |
+          SDK_PLATFORMS="$ANDROID_HOME/platforms"
+          ln -sfn android-37.0 "$SDK_PLATFORMS/android-37"
       - uses: gradle/actions/setup-gradle@v4
       - name: Compilar KeuMusic Release ARM64
         working-directory: KeuMusicApp
