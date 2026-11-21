@@ -51,11 +51,11 @@ This repository contains the standalone lyrics provider modules originally extra
 
 ## Architecture
 
-The diagram below shows how these lyrics modules integrate into the YumaPlayer app (originally ArchiveTune).
+The diagram below shows how these lyrics modules integrate into the KeuMusic app (originally ArchiveTune).
 
 ```mermaid
 flowchart TB
-    subgraph Android["YumaPlayer App (Android)"]
+    subgraph Android["KeuMusic App (Android)"]
         UI["Jetpack Compose UI<br/>LyricsScreen, LyricsMenu"]
         VM["LyricsMenuViewModel"]
         LH["LyricsHelper<br/>Orchestrator & Cache"]

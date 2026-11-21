@@ -1,15 +1,11 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
+ * KeuMusic (2026) | Modified work by MuwMix
  * ArchiveTune (2026) | Original work by © Rukamori
  * GPL-3.0 License | Contributors: see git history
  */
 
 package moe.rukamori.archivetune.ui.screens.settings
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -26,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,8 +39,6 @@ internal fun LinkChipRow(
     onOpenUri: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val solanaAddress = AboutContract.SOLANA_ADDRESS
 
     FlowRow(
         modifier = modifier.fillMaxWidth(),
@@ -63,18 +56,6 @@ internal fun LinkChipRow(
                 onClick = onClick,
             )
         }
-        val solanaCopiedMessage = stringResource(R.string.solana_address_copied)
-
-        InteractiveLinkChip(
-            label = stringResource(R.string.about_solana_label),
-            iconResId = R.drawable.ic_solana,
-            onClick = {
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Solana Address", solanaAddress)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, solanaCopiedMessage, Toast.LENGTH_SHORT).show()
-            },
-        )
     }
 }
 

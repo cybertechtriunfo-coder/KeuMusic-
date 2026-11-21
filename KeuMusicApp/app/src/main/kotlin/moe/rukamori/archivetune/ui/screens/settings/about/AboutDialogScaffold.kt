@@ -1,5 +1,5 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
+ * KeuMusic (2026) | Modified work by MuwMix
  * ArchiveTune (2026) | Original work by © Rukamori
  * GPL-3.0 License | Contributors: see git history
  */
@@ -71,18 +71,7 @@ internal fun AboutFullScreenDialogs(
     when (model.activeDialog) {
         AboutDialog.NONE -> {}
 
-        AboutDialog.TRANSLATION_CONTRIBUTORS -> {
-            AboutFullScreenDialog(
-                title = stringResource(R.string.about_contributor_translation),
-                onDismiss = onDismiss,
-            ) { modifier ->
-                TranslationContributorsDialogContent(
-                    state = model.translationContributorsState,
-                    onRetry = onRetryTranslationContributors,
-                    modifier = modifier,
-                )
-            }
-        }
+        AboutDialog.TRANSLATION_CONTRIBUTORS -> {}
 
         AboutDialog.DEPENDENCY_LICENSES -> {
             AboutFullScreenDialog(

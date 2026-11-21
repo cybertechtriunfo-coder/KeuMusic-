@@ -1,5 +1,5 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
+ * KeuMusic (2026) | Modified work by MuwMix
  * ArchiveTune (2026) | Original work by © Rukamori
  * GPL-3.0 License | Contributors: see git history
  */
@@ -9,9 +9,6 @@ package moe.rukamori.archivetune.ui.screens.settings
 import androidx.compose.runtime.Immutable
 import moe.rukamori.archivetune.about.AboutScreenState
 
-internal object AboutContract {
-    const val SOLANA_ADDRESS = "DT3ckdbNuiQMR1mrCpBXCMrhLB19GckVv3YfxsLLiF8z"
-}
 
 typealias AboutUiState = AboutScreenState
 

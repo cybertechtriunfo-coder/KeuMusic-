@@ -1,5 +1,5 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
+ * KeuMusic (2026) | Modified work by MuwMix
  * ArchiveTune (2026) | Original work by © Rukamori
  * GPL-3.0 License | Contributors: see git history
  */
@@ -44,7 +44,6 @@ internal fun AboutOverflowMenu(
     expanded: Boolean,
     onShowMenu: () -> Unit,
     onDismissMenu: () -> Unit,
-    onOpenTranslationContributors: () -> Unit,
     onOpenDependencyLicenses: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -63,16 +62,6 @@ internal fun AboutOverflowMenu(
             expanded = expanded,
             onDismissRequest = onDismissMenu,
         ) {
-            DropdownMenuItem(
-                text = { Text(text = stringResource(R.string.about_contributor_translation)) },
-                onClick = onOpenTranslationContributors,
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.translate),
-                        contentDescription = null,
-                    )
-                },
-            )
 
             DropdownMenuItem(
                 text = { Text(text = stringResource(R.string.about_license)) },
@@ -150,17 +139,6 @@ internal fun AboutSuccessContent(
             }
         }
 
-        item(key = "contributors", contentType = "about_contributors") {
-            AboutContentContainer {
-                ContributorsSection(
-                    state = model.contributorsState,
-                    readMoreUrl = model.contributorsReadMoreUrl,
-                    onOpenProfile = onOpenUri,
-                    onRetry = onRetryContributors,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
     }
 }
 

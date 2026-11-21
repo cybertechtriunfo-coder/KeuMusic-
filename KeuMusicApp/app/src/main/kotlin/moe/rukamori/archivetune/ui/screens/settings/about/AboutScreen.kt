@@ -1,5 +1,5 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
+ * KeuMusic (2026) | Modified work by MuwMix
  * ArchiveTune (2026) | Original work by © Rukamori
  * GPL-3.0 License | Contributors: see git history
  */
@@ -184,7 +184,6 @@ internal fun AboutScreenContent(
                                     expanded = state.model.isOverflowMenuExpanded,
                                     onShowMenu = onShowOverflowMenu,
                                     onDismissMenu = onDismissOverflowMenu,
-                                    onOpenTranslationContributors = onOpenTranslationContributors,
                                     onOpenDependencyLicenses = onOpenDependencyLicenses,
                                 )
                             }

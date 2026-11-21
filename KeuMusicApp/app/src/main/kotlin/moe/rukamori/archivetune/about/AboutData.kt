@@ -1,5 +1,5 @@
 /*
- * YumaPlayer (2026) | Modified work by MuwMix
+ * KeuMusic (2026) | Modified work by MuwMix
  * ArchiveTune (2026) | Original work by © Rukamori
  * GPL-3.0 License | Contributors: see git history
  */
@@ -17,7 +17,7 @@ import moe.rukamori.archivetune.about.AboutTranslationContributorCollection
 import moe.rukamori.archivetune.currentBuildHash
 
 internal const val MaxDisplayedContributors = 20
-internal const val ContributorsReadMoreUrl = "https://github.com/MuwMx/YumaPlayer/graphs/contributors"
+internal const val ContributorsReadMoreUrl = "https://github.com/cybertechtriunfo-coder/KeuMusic-/graphs/contributors"
 
 internal fun buildAboutUiModel(
     contributorsState: AboutContributorsUiState,
@@ -35,32 +35,38 @@ internal fun buildAboutUiModel(
             id = "telegram",
             iconResId = R.drawable.ic_telegram,
             labelResId = R.string.about_content_desc_telegram,
-            url = "https://t.me/yumaplayer",
-        ),
+            url = "https://t.me/KeuMusic",
+            ),
+            AboutLinkUiModel(
+                id = "instagram_official",
+                iconResId = R.drawable.instagram,
+                labelResId = R.string.about_content_desc_instagram,
+                url = "https://www.instagram.com/qkeumusic/",
+            ),
+            AboutLinkUiModel(
+                id = "instagram_personal",
+                iconResId = R.drawable.instagram,
+                labelResId = R.string.about_content_desc_instagram,
+                url = "https://www.instagram.com/cleudeson_soares?bqrl=MWlzOGdkb2w1MW04bQ==",
+            ),
         AboutLinkUiModel(
             id = "github",
             iconResId = R.drawable.ic_github,
             labelResId = R.string.about_content_desc_github,
-            url = "https://github.com/MuwMx/YumaPlayer",
-        ),
-        AboutLinkUiModel(
-            id = "donate",
-            iconResId = R.drawable.ic_coffe,
-            labelResId = R.string.about_content_desc_donate,
-            url = "https://ko-fi.com/muwmix",
+            url = "https://github.com/cybertechtriunfo-coder/KeuMusic-",
         ),
     ),
     leadDeveloper = TeamMember(
-        avatarUrl = "https://avatars.githubusercontent.com/u/138480557?v=4",
-        name = "MuwMix",
+        avatarUrl = "",
+        name = "Cleudeson Soares",
         positionResId = R.string.about_position_lead_dev,
-        profileUrl = "https://github.com/MuwMx",
+        profileUrl = "https://www.instagram.com/cleudeson_soares?bqrl=MWlzOGdkb2w1MW04bQ==",
         links = AboutLinkCollection.of(
             AboutLinkUiModel(
                 id = "github",
                 iconResId = R.drawable.ic_github,
                 labelResId = R.string.about_content_desc_github,
-                url = "https://github.com/MuwMx",
+                url = "https://github.com/cybertechtriunfo-coder/KeuMusic-",
             ),
         ),
     ),

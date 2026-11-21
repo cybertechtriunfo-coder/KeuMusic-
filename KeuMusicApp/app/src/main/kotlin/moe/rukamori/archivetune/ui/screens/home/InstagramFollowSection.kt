@@ -68,7 +68,7 @@ internal fun InstagramFollowSection(
             accent = Color(0xFF00BFEA),
             onClick = {
                 runCatching {
-                    uriHandler.openUri("https://www.instagram.com/cleudeson_soares/")
+                    uriHandler.openUri("https://www.instagram.com/cleudeson_soares?bqrl=MWlzOGdkb2w1MW04bQ==")
                 }
             },
         )

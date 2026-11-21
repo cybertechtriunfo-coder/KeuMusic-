@@ -1,5 +1,5 @@
 /*
- * YumaPlayer (2026) | Original work by MuwMix
+ * KeuMusic (2026) | Original work by MuwMix
  *  * GPL-3.0 License | Contributors: see git history
  */
 
