@@ -30,6 +30,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.db.entities.Song
+import moe.rukamori.archivetune.ui.screens.charts.TOP_MUSIC_VIDEOS_SECTION_TITLE
+import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint
+import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -58,6 +63,20 @@ internal fun QuickPicksHeroContent(
     modifier: Modifier = Modifier,
 ) {
     val haptics = rememberYumaHaptics()
+
+    var featuredVideos by remember { mutableStateOf<List<SongItem>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        YouTube.getChartsPage().onSuccess { page ->
+            featuredVideos = page.sections
+                .firstOrNull { it.title == TOP_MUSIC_VIDEOS_SECTION_TITLE }
+                ?.items
+                ?.filterIsInstance<SongItem>()
+                ?.distinctBy { it.id }
+                .orEmpty()
+        }
+    }
+
     val animationsDisabled = LocalAnimationsDisabled.current
     val isPlayerExpanded = LocalPlayerIsExpanded.current
 
@@ -80,7 +99,7 @@ internal fun QuickPicksHeroContent(
 
     val isCarouselActive = isLifecycleResumed && !isPlayerExpanded && isSectionInViewport
 
-    val heroItems = remember(distinctQuickPicks) {
+    val songHeroItems = remember(distinctQuickPicks) {
         distinctQuickPicks.map { song ->
             HeroItem(
                 id = song.id,
@@ -90,20 +109,57 @@ internal fun QuickPicksHeroContent(
             )
         }
     }
+
+    val videoHeroItems = remember(featuredVideos) {
+        featuredVideos.map { video ->
+            HeroItem(
+                id = video.id,
+                title = video.title,
+                artist = video.artists.joinToString(", ") { it.name },
+                thumbnailUrl = video.thumbnail,
+            )
+        }
+    }
+
+    val heroItems = remember(songHeroItems, videoHeroItems) {
+        songHeroItems + videoHeroItems
+    }
     val songMap = remember(distinctQuickPicks) {
         distinctQuickPicks.associateBy { it.id }
+    }
+    val videoMap = remember(featuredVideos) {
+        featuredVideos.associateBy { it.id }
     }
 
     val rollController = rememberHeroRollController()
 
     HeroRollEffects(
         controller = rollController,
-        items = heroItems,
+        items = songHeroItems,
         isCarouselActive = isCarouselActive,
         animationsDisabled = animationsDisabled,
     )
 
     fun playTrack(id: String, toggleIfCurrent: Boolean = true) {
+        val video = videoMap[id]
+        if (video != null) {
+            if (id == mediaMetadata?.id) {
+                if (toggleIfCurrent) {
+                    playerConnection.player.togglePlayPause()
+                } else if (!playerConnection.player.playWhenReady) {
+                    playerConnection.player.play()
+                }
+            } else {
+                playerConnection.playQueue(
+                    YouTubeQueue(
+                        endpoint = WatchEndpoint(videoId = video.id),
+                        preloadItem = video.toMediaMetadata(),
+                    )
+                )
+            }
+            return
+        }
+
         val song = songMap[id] ?: return
         if (id == mediaMetadata?.id) {
             if (toggleIfCurrent) {
@@ -139,6 +195,19 @@ internal fun QuickPicksHeroContent(
     }
 
     fun showTrackMenu(id: String) {
+        val video = videoMap[id]
+        if (video != null) {
+            haptics.longPress()
+            menuState.show {
+                YouTubeSongMenu(
+                    song = video,
+                    navController = navController,
+                    onDismiss = menuState::dismiss,
+                )
+            }
+            return
+        }
+
         val song = songMap[id] ?: return
         haptics.longPress()
         menuState.show {
@@ -165,7 +234,7 @@ internal fun QuickPicksHeroContent(
 
         HeroCarousel(
             items = heroItems,
-            rollCandidates = heroItems,
+            rollCandidates = songHeroItems,
             rollState = rollController.state,
             mediaMetadata = mediaMetadata,
             isPlaying = isPlaying,
