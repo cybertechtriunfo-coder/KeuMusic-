@@ -69,6 +69,7 @@ internal fun buildAboutUiModel(
                 url = "https://www.instagram.com/cleudeson_soares?bqrl=MWlzOGdkb2w1MW04bQ==",
             ),
         ),
+        avatarResId = R.drawable.developer_cleudeson,
     ),
     collaborators = TeamMemberCollection.of(
         TeamMember(

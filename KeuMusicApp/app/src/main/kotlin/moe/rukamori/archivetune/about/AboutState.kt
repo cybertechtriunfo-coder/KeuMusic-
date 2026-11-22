@@ -42,6 +42,7 @@ data class TeamMember(
     @StringRes val positionResId: Int,
     val profileUrl: String?,
     val links: AboutLinkCollection,
+    @androidx.annotation.DrawableRes val avatarResId: Int? = null,
 )
 
 @Immutable

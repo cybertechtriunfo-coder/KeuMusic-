@@ -2,7 +2,7 @@ package moe.rukamori.archivetune.ui.screens.home
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,7 +10,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -22,16 +21,15 @@ internal fun InstagramFollowSection(
 ) {
     val uriHandler = LocalUriHandler.current
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 5.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Surface(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .clickable {
                     runCatching {
                         uriHandler.openUri("https://www.instagram.com/qkeumusic/")
@@ -52,7 +50,7 @@ internal fun InstagramFollowSection(
 
         Surface(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .clickable {
                     runCatching {
                         uriHandler.openUri("https://www.instagram.com/cleudeson_soares?bqrl=MWlzOGdkb2w1MW04bQ==")

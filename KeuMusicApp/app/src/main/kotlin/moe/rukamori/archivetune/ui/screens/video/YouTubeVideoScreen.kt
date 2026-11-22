@@ -5,6 +5,8 @@
  */
 package moe.rukamori.archivetune.ui.screens.video
 
+import android.view.View
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -40,8 +42,11 @@ fun YouTubeVideoScreen(videoId: String) {
         } else {
             val webView = remember(validId) {
                 WebView(context).apply {
+                    setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
+                    settings.loadsImagesAutomatically = true
                     settings.mediaPlaybackRequiresUserGesture = false
                     webChromeClient = WebChromeClient()
                     webViewClient = WebViewClient()

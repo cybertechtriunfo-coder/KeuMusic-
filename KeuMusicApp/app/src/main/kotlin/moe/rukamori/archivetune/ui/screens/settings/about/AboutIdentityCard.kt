@@ -207,8 +207,8 @@ internal fun SurfaceAppIcon(modifier: Modifier = Modifier) {
             contentDescription = null,
             modifier =
                 Modifier
-                    .padding(16.dp)
-                    .size(64.dp),
+                    .padding(4.dp)
+                    .size(88.dp),
         )
     }
 }

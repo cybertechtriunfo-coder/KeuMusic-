@@ -129,12 +129,14 @@ internal fun TeamMemberListItem(
                         ),
                 contentAlignment = Alignment.Center,
             ) {
+                val avatarData = member.avatarResId ?: member.avatarUrl
+                val avatarCacheKey = member.avatarResId?.let { "drawable:$it" } ?: member.avatarUrl
                 val avatarImageRequest =
-                    remember(member.avatarUrl, context) {
+                    remember(avatarData, avatarCacheKey, context) {
                         ImageRequest.Builder(context)
-                            .data(member.avatarUrl)
-                            .diskCacheKey(member.avatarUrl)
-                            .memoryCacheKey(member.avatarUrl)
+                            .data(avatarData)
+                            .diskCacheKey(avatarCacheKey)
+                            .memoryCacheKey(avatarCacheKey)
                             .crossfade(true)
                             .allowHardware(false)
                             .build()
