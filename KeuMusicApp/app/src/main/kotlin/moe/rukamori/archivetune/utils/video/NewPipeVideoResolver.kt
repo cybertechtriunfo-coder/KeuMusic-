@@ -5,7 +5,6 @@
  */
 package moe.rukamori.archivetune.utils.video
 
-import org.schabi.newpipe.extractor.Image
 import org.schabi.newpipe.extractor.MediaFormat
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
