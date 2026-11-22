@@ -31,6 +31,8 @@ import moe.rukamori.archivetune.obfuscator.quickjs.youtubei.YoutubeiNetworkConfi
 import moe.rukamori.archivetune.obfuscator.quickjs.youtubei.YoutubeiResolutionPriority
 import moe.rukamori.archivetune.obfuscator.quickjs.youtubei.YoutubeiResolver
 import moe.rukamori.archivetune.obfuscator.quickjs.youtubei.YoutubeiVideoRequest
+import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
 import okhttp3.Dns
 import java.net.Proxy
 
@@ -71,16 +73,40 @@ fun YouTubeVideoScreen(videoId: String) {
 
         try {
             val stream = withContext(Dispatchers.IO) {
+                // Reuse the same authenticated YouTube session already used by audio playback.
+                val authState = YouTube.currentPlaybackAuthState()
+                val sessionId = authState.sessionId ?: authState.visitorData
+                val mintedTokens = sessionId?.let {
+                    BotGuardTokenGenerator.mintToken(validId, it)
+                }
+
                 resolver.resolveVideo(
                     request = YoutubeiVideoRequest(
                         mediaId = validId,
-                        authFingerprint = "keumusic-anonymous-video-$validId",
+                        authFingerprint = "keumusic-video-${authState.fingerprint}-$validId",
                         maxHeight = 720,
+                        cookie = authState.cookie,
+                        visitorData = authState.visitorData,
+                        dataSyncId = authState.dataSyncId,
+                        sessionPoToken = authState.poTokenGvs
+                            ?: authState.poToken
+                            ?: mintedTokens?.sessionToken,
+                        videoPoToken = authState.poTokenPlayer
+                            ?: authState.poToken
+                            ?: mintedTokens?.playerToken,
                         language = "pt-BR",
                         location = "BR",
                         timezone = "America/Sao_Paulo",
                     ),
                     priority = YoutubeiResolutionPriority.FOREGROUND,
+                    videoPoTokenProvider = { requestedMediaId ->
+                        if (requestedMediaId == validId && sessionId != null) {
+                            mintedTokens?.playerToken
+                                ?: BotGuardTokenGenerator.mintToken(requestedMediaId, sessionId)?.playerToken
+                        } else {
+                            null
+                        }
+                    },
                 )
             }
 
