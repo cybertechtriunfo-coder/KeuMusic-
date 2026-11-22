@@ -10,15 +10,19 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
@@ -43,6 +47,7 @@ import moe.rukamori.archivetune.spotify.SpotifyTracksQueue
 import moe.rukamori.archivetune.spotify.sync.SpotifyLibraryMutations
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.screens.home.HomeSectionHeader
+import moe.rukamori.archivetune.ui.screens.home.InstagramFollowSection
 import moe.rukamori.archivetune.ui.screens.spotifyhome.HomeStatePane
 import moe.rukamori.archivetune.ui.screens.spotifyhome.SpotifyAlbumSectionRow
 import moe.rukamori.archivetune.ui.screens.spotifyhome.SpotifyArtistSectionRow
@@ -218,6 +223,18 @@ fun SpotifyHomeScreen(
                                     }
                                 }
                             }
+                        }
+                        item(key = "spotify_instagram_section", contentType = "instagram_section") {
+                            InstagramFollowSection(modifier = Modifier.animateItem())
+                        }
+                        item(key = "spotify_developer_credit", contentType = "developer_credit") {
+                            Text(
+                                text = "Desenvolvedor: Cleudeson Soares",
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }

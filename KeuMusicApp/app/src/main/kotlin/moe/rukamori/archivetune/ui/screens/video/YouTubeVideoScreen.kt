@@ -72,7 +72,7 @@ fun YouTubeVideoScreen(videoId: String) {
                         </html>
                     """.trimIndent()
 
-                    loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "UTF-8", null)
+                    loadDataWithBaseURL("https://re.muwmix.yumaplayer", html, "text/html", "UTF-8", null)
                 }
             }
 
