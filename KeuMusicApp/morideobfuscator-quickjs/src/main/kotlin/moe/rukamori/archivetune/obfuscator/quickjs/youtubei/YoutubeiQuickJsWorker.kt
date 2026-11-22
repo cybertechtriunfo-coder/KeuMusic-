@@ -65,6 +65,68 @@ internal class YoutubeiQuickJsWorker(
         }
     }
 
+    suspend fun resolveVideo(
+        requestJson: String,
+        videoPoTokenProvider: suspend (String) -> String?,
+    ): String =
+        mutex.withLock {
+            withContext(dispatcher) {
+                val runtime = ensureInitialized()
+                activeVideoPoTokenProvider = videoPoTokenProvider
+                try {
+                    activeRequestAuthentication =
+                        YoutubeiRequestAuthentication.fromRequest(JSONObject(requestJson))
+
+                    val preparation = traceStage("prepare-video-session") {
+                        evaluateRequest(
+                            runtime = runtime,
+                            code =
+                                "await globalThis.ArchiveTuneYoutubei.prepare(" +
+                                    JSONObject.quote(requestJson) +
+                                    ");",
+                            filename = "archivetune-prepare-video.js",
+                        )
+                    }
+                    runtime.gc()
+                    if (!JSONObject(preparation).optBoolean("ok")) {
+                        return@withContext preparation
+                    }
+
+                    val response = traceStage("resolve-video-stream") {
+                        evaluateRequest(
+                            runtime = runtime,
+                            code =
+                                "await globalThis.ArchiveTuneYoutubei.resolveVideoPrepared(" +
+                                    JSONObject.quote(requestJson) +
+                                    ");",
+                            filename = "archivetune-resolve-video.js",
+                        )
+                    }
+                    runtime.gc()
+                    response
+                } catch (throwable: Throwable) {
+                    if (
+                        throwable is CancellationException ||
+                        throwable is QuickJsInterruptedException ||
+                        throwable is YoutubeiException && throwable.kind == YoutubeiFailureKind.TIMEOUT ||
+                        throwable.isQuickJsOutOfMemory()
+                    ) {
+                        discardRuntime(runtime, throwable)
+                    } else {
+                        try {
+                            runtime.gc()
+                        } catch (gcFailure: Throwable) {
+                            throwable.addSuppressed(gcFailure)
+                        }
+                    }
+                    throw throwable
+                } finally {
+                    activeVideoPoTokenProvider = null
+                    activeRequestAuthentication = null
+                }
+            }
+        }
+
     suspend fun resolve(
         requestJson: String,
         videoPoTokenProvider: suspend (String) -> String?,

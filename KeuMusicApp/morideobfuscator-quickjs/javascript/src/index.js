@@ -704,6 +704,142 @@ async function resolveWithClient(youtube, request, client, preparedInfo) {
   };
 }
 
+
+async function resolveVideoWithClient(youtube, request, client) {
+  const supportsGvsPoToken = client === AUTHENTICATED_CLIENT;
+  if (supportsGvsPoToken) await ensurePlayerMetadata(youtube);
+
+  const info = await youtube.getBasicInfo(request.mediaId, {
+    client,
+    po_token: supportsGvsPoToken
+      ? normalizedString(request.videoPoToken)
+      : undefined,
+  });
+
+  const status = normalizedString(info.playability_status?.status);
+  const reason = normalizedString(info.playability_status?.reason);
+  if (status && status !== "OK") {
+    throw playabilityError(status, reason);
+  }
+
+  const formats = [
+    ...(info.streaming_data?.formats || []),
+    ...(info.streaming_data?.adaptive_formats || []),
+  ].filter((format) => {
+    const mime = String(format.mime_type || "").split(";", 1)[0].toLowerCase();
+    return Boolean(format.has_video) &&
+      Boolean(format.has_audio) &&
+      !format.is_type_otf &&
+      !format.fair_play_key_uri &&
+      !format.drm_track_type &&
+      !(format.drm_families && format.drm_families.length) &&
+      (mime === "video/mp4" || mime === "video/webm") &&
+      Boolean(format.url || format.signature_cipher || format.cipher);
+  });
+
+  if (!formats.length) {
+    throw playerError(
+      "No compatible muxed video/audio format is available",
+      "NO_FORMAT",
+    );
+  }
+
+  formats.sort((a, b) =>
+    Number(a.height || 0) - Number(b.height || 0) ||
+    bitrateOf(a) - bitrateOf(b)
+  );
+
+  const maxHeight = Number(request.maxHeight || 720);
+  const withinLimit = formats.filter(
+    (format) => Number(format.height || 0) <= maxHeight
+  );
+  const format = (withinLimit.length ? withinLimit : formats)[
+    (withinLimit.length ? withinLimit : formats).length - 1
+  ];
+
+  let player;
+  try {
+    player = formatNeedsPlayer(format) ? await getPlayer(youtube) : undefined;
+  } catch (cause) {
+    const error = playerError(
+      failureMessage(cause, "Could not prepare video URL deciphering"),
+      "DECIPHER",
+    );
+    throw error;
+  }
+
+  let url;
+  try {
+    url = await format.decipher(player);
+  } catch (cause) {
+    throw playerError(
+      failureMessage(cause, "Could not decipher the video URL"),
+      "DECIPHER",
+    );
+  }
+
+  const parsedUrl = applyGvsPoToken(new URL(url), {
+    supportsGvsPoToken,
+    videoPoToken: request.videoPoToken,
+    sessionPoToken: request.sessionPoToken,
+  });
+
+  if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+    throw playerError("Unsupported video stream URL", "DECIPHER");
+  }
+
+  const mime = String(format.mime_type || "video/mp4");
+  const basicInfo = info.basic_info || {};
+  const headers = {
+    Accept: "*/*",
+    Origin: "https://www.youtube.com",
+    Referer: "https://www.youtube.com/",
+  };
+  const userAgent = playbackUserAgent(youtube, client);
+  if (userAgent) headers["User-Agent"] = userAgent;
+
+  return {
+    url: parsedUrl.toString(),
+    headers,
+    formatId: Number(format.itag),
+    mimeType: mime.split(";", 1)[0],
+    codecs: /codecs="([^"]+)"/.exec(mime)?.[1] || "",
+    bitrate: bitrateOf(format),
+    width: Number(format.width || 0) || null,
+    height: Number(format.height || 0) || null,
+    frameRate: Number(format.fps || 0) || null,
+    contentLength: Number(format.content_length || 0),
+    expiresAtMs: extractExpiry(parsedUrl, info.streaming_data?.expires),
+    runtimeVersion: RUNTIME_VERSION,
+    title: normalizedString(basicInfo.title),
+    durationSeconds: Number(basicInfo.duration || 0) || null,
+    thumbnailUrl: thumbnailUrl(basicInfo),
+  };
+}
+
+async function resolveVideoPrepared(requestJson) {
+  try {
+    const request = parseRequest(requestJson);
+    const identity = createSessionIdentity(request);
+    if (!session || identity !== sessionIdentity) {
+      throw playerError("youtubei.js session was not prepared", "INTERNAL");
+    }
+
+    const authenticated = Boolean(normalizedString(request.cookie));
+    const client = authenticated ? AUTHENTICATED_CLIENT : ANONYMOUS_CLIENT;
+    const value = await resolveVideoWithClient(session, request, client);
+    return JSON.stringify({ ok: true, value });
+  } catch (error) {
+    return JSON.stringify({
+      ok: false,
+      error: normalizedFailure(error),
+    });
+  } finally {
+    stagedPlayerId = undefined;
+    stagedPlayerSource = undefined;
+  }
+}
+
 function parseRequest(requestJson) {
   const request = JSON.parse(requestJson);
   if (!/^[A-Za-z0-9_-]{6,32}$/.test(String(request.mediaId || ""))) {
@@ -829,6 +965,7 @@ globalThis.ArchiveTuneYoutubei = Object.freeze({
   version: RUNTIME_VERSION,
   prepare,
   resolvePrepared,
+  resolveVideoPrepared,
   decipherUrl,
   reset() {
     session = undefined;

@@ -72,6 +72,70 @@ class YoutubeiResolver(
                 }
         }
 
+    suspend fun resolveVideo(
+        request: YoutubeiVideoRequest,
+        priority: YoutubeiResolutionPriority,
+        videoPoTokenProvider: suspend (String) -> String? = { null },
+    ): YoutubeiResolvedVideoStream =
+        when (priority) {
+            YoutubeiResolutionPriority.FOREGROUND ->
+                resolveVideoWithWorker(request, videoPoTokenProvider)
+            YoutubeiResolutionPriority.BACKGROUND ->
+                backgroundPermit.withPermit {
+                    resolveVideoWithWorker(request, videoPoTokenProvider)
+                }
+        }
+
+    private suspend fun resolveVideoWithWorker(
+        request: YoutubeiVideoRequest,
+        videoPoTokenProvider: suspend (String) -> String?,
+    ): YoutubeiResolvedVideoStream {
+        val requestJson = request.toVideoJson().toString()
+        val startedAt = SystemClock.elapsedRealtime()
+        diagnostics("Video resolution queued mediaId=${request.mediaId}")
+        val response =
+            try {
+                worker.resolveVideo(
+                    requestJson = requestJson,
+                    videoPoTokenProvider = videoPoTokenProvider,
+                )
+            } catch (cancellation: CancellationException) {
+                diagnostics("Video resolution cancelled elapsedMs=${SystemClock.elapsedRealtime() - startedAt}")
+                throw cancellation
+            } catch (timeout: QuickJsInterruptedException) {
+                currentCoroutineContext().ensureActive()
+                throw YoutubeiException(
+                    kind = YoutubeiFailureKind.TIMEOUT,
+                    message = "youtubei.js video execution timed out",
+                    cause = timeout,
+                )
+            } catch (timeout: SocketTimeoutException) {
+                throw YoutubeiException(
+                    kind = YoutubeiFailureKind.TIMEOUT,
+                    message = timeout.message ?: "youtubei.js video network request timed out",
+                    cause = timeout,
+                )
+            } catch (failure: YoutubeiException) {
+                throw failure
+            } catch (network: IOException) {
+                throw YoutubeiException(
+                    kind = YoutubeiFailureKind.NETWORK,
+                    message = network.message ?: "youtubei.js video network request failed",
+                    cause = network,
+                )
+            } catch (throwable: Throwable) {
+                currentCoroutineContext().ensureActive()
+                throw YoutubeiException(
+                    kind = YoutubeiFailureKind.INTERNAL,
+                    message = throwable.message ?: "youtubei.js video execution failed",
+                    cause = throwable,
+                )
+            }
+        return parseVideoResponse(response).also {
+            diagnostics("Video resolution complete elapsedMs=${SystemClock.elapsedRealtime() - startedAt}")
+        }
+    }
+
     suspend fun invalidateSessions() {
         worker.closeRuntime()
     }
@@ -130,6 +194,71 @@ class YoutubeiResolver(
         return parseResponse(response).also {
             diagnostics("Resolution complete elapsedMs=${SystemClock.elapsedRealtime() - startedAt}")
         }
+    }
+
+    private fun parseVideoResponse(response: String): YoutubeiResolvedVideoStream {
+        val json =
+            runCatching { JSONObject(response) }.getOrElse { throwable ->
+                throw YoutubeiException(
+                    kind = YoutubeiFailureKind.INVALID_RESPONSE,
+                    message = "youtubei.js returned malformed video JSON",
+                    cause = throwable,
+                )
+            }
+        if (!json.optBoolean("ok")) {
+            val error = json.optJSONObject("error")
+            val kind =
+                runCatching {
+                    YoutubeiFailureKind.valueOf(error?.optString("kind").orEmpty())
+                }.getOrDefault(YoutubeiFailureKind.INTERNAL)
+            throw YoutubeiException(
+                kind = kind,
+                message = error?.optString("message")?.takeIf(String::isNotBlank)
+                    ?: "youtubei.js video resolution failed",
+                httpStatus = error?.optInt("httpStatus")?.takeIf { it > 0 },
+            )
+        }
+        val value = json.optJSONObject("value")
+            ?: throw YoutubeiException(
+                kind = YoutubeiFailureKind.INVALID_RESPONSE,
+                message = "youtubei.js returned no video payload",
+            )
+        val url = value.optString("url").trim()
+        val scheme = Uri.parse(url).scheme?.lowercase()
+        if (scheme !in HTTP_SCHEMES) {
+            throw YoutubeiException(
+                kind = YoutubeiFailureKind.INVALID_RESPONSE,
+                message = "youtubei.js returned an unsupported video URL",
+            )
+        }
+        val headers =
+            buildMap {
+                value.optJSONObject("headers")?.let { values ->
+                    values.keys().forEach { name ->
+                        val headerValue = values.optString(name)
+                        if (isSafeHeader(name, headerValue)) put(name, headerValue)
+                    }
+                }
+            }
+        val now = System.currentTimeMillis()
+        return YoutubeiResolvedVideoStream(
+            url = url,
+            requestHeaders = headers,
+            formatId = value.optInt("formatId", -1),
+            mimeType = value.optString("mimeType", "video/mp4"),
+            codecs = value.optString("codecs"),
+            bitrate = value.optInt("bitrate").coerceAtLeast(0),
+            width = value.optInt("width").takeIf { it > 0 },
+            height = value.optInt("height").takeIf { it > 0 },
+            frameRate = value.optDouble("frameRate", Double.NaN).takeIf(Double::isFinite),
+            contentLength = value.optLong("contentLength").coerceAtLeast(0L),
+            expiresAtMs = value.optLong("expiresAtMs").takeIf { it > now }
+                ?: now + DEFAULT_STREAM_LIFETIME_MS,
+            runtimeVersion = value.optString("runtimeVersion", YOUTUBEI_VERSION),
+            title = value.optionalString("title"),
+            durationSeconds = value.optInt("durationSeconds").takeIf { it > 0 },
+            thumbnailUrl = value.optionalString("thumbnailUrl"),
+        )
     }
 
     private fun parseResponse(response: String): YoutubeiResolvedStream {
@@ -196,6 +325,20 @@ class YoutubeiResolver(
             playbackTrackingUrl = value.optionalString("playbackTrackingUrl"),
         )
     }
+
+    private fun YoutubeiVideoRequest.toVideoJson(): JSONObject =
+        JSONObject()
+            .put("mediaId", mediaId)
+            .put("authFingerprint", authFingerprint)
+            .put("maxHeight", maxHeight.coerceIn(144, 2160))
+            .put("cookie", cookie)
+            .put("visitorData", visitorData)
+            .put("dataSyncId", dataSyncId)
+            .put("sessionPoToken", sessionPoToken)
+            .put("videoPoToken", videoPoToken)
+            .put("language", language)
+            .put("location", location)
+            .put("timezone", timezone)
 
     private fun YoutubeiStreamRequest.toJson(): JSONObject =
         JSONObject()

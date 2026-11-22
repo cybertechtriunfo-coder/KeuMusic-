@@ -292,6 +292,8 @@ ksp {
 }
 
 dependencies {
+    implementation(libs.media3.ui)
+
 implementation(libs.androidx.foundation.layout)
     implementation(libs.animation.core)
     implementation(libs.foundation.layout)

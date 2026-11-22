@@ -73,6 +73,38 @@ data class YoutubeiResolvedStream(
     val playbackTrackingUrl: String?,
 )
 
+data class YoutubeiVideoRequest(
+    val mediaId: String,
+    val authFingerprint: String,
+    val maxHeight: Int = 720,
+    val cookie: String? = null,
+    val visitorData: String? = null,
+    val dataSyncId: String? = null,
+    val sessionPoToken: String? = null,
+    val videoPoToken: String? = null,
+    val language: String = "en",
+    val location: String = "US",
+    val timezone: String = "UTC",
+)
+
+data class YoutubeiResolvedVideoStream(
+    val url: String,
+    val requestHeaders: Map<String, String>,
+    val formatId: Int,
+    val mimeType: String,
+    val codecs: String,
+    val bitrate: Int,
+    val width: Int?,
+    val height: Int?,
+    val frameRate: Double?,
+    val contentLength: Long,
+    val expiresAtMs: Long,
+    val runtimeVersion: String,
+    val title: String?,
+    val durationSeconds: Int?,
+    val thumbnailUrl: String?,
+)
+
 data class YoutubeiNetworkConfiguration(
     val proxy: Proxy?,
     val proxyUsername: String?,
