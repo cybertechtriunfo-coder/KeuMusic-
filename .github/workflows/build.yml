@@ -1,0 +1,39 @@
+name: KeuMusic Android Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - keumusic-audio-engine
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
+      - name: Instalar dependencias Android
+        run: sdkmanager "platforms;android-37.0" "cmake;3.22.1"
+      - name: Corrigir caminho do Android SDK 37
+        run: |
+          SDK_PLATFORMS="$ANDROID_HOME/platforms"
+          ln -sfn android-37.0 "$SDK_PLATFORMS/android-37"
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compilar KeuMusic Release ARM64
+        working-directory: KeuMusicApp
+        run: ./gradlew :app:assembleGmsMobileArm64Release
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeuMusic-APK
+          path: KeuMusicApp/app/build/outputs/apk/gmsMobileArm64/release/*.apk
