@@ -218,7 +218,7 @@ fun OnlineSearchResult(
                     items = viewModel.sortedItems(itemsPage?.items.orEmpty().distinctBy { it.id }, searchSort),
                     key = { "filtered_${it.id}" },
                     contentType = { "search_result" },
-                    itemContent = { item -> ytItemContent(item, searchFilter?.value == FILTER_VIDEO) },
+                    itemContent = { item -> ytItemContent(item, searchFilter == FILTER_VIDEO) },
                 )
 
                 if (itemsPage?.continuation != null) {
