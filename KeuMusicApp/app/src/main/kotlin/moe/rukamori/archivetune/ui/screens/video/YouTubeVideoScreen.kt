@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -33,6 +34,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.utils.video.NewPipeVideoDownloader
 import moe.rukamori.archivetune.utils.video.NewPipeVideoResolver
 
+@OptIn(UnstableApi::class)
 @Composable
 fun YouTubeVideoScreen(videoId: String) {
     val context = LocalContext.current
