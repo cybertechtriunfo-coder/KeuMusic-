@@ -49,6 +49,7 @@ import moe.rukamori.archivetune.utils.clearPlaybackAuthSession
 import moe.rukamori.archivetune.utils.clearPlaybackWebAuthSession
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
+import moe.rukamori.archivetune.utils.video.NewPipeVideoRuntime
 import timber.log.Timber
 import java.io.File
 import java.util.*
@@ -92,6 +93,7 @@ class App :
             return
         }
         BotGuardTokenGenerator.initialize(this)
+        NewPipeVideoRuntime.initialize()
         PreferenceStore.start(this)
         Timber.plant(Timber.DebugTree())
         if (BuildConfig.DEBUG) {
