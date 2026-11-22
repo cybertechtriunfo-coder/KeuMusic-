@@ -57,7 +57,7 @@ internal fun buildAboutUiModel(
         ),
     ),
     leadDeveloper = TeamMember(
-        avatarUrl = "",
+        avatarUrl = "android.resource://re.muwmix.yumaplayer/drawable/developer_cleudeson",
         name = "Cleudeson Soares",
         positionResId = R.string.about_position_lead_dev,
         profileUrl = "https://www.instagram.com/cleudeson_soares?bqrl=MWlzOGdkb2w1MW04bQ==",

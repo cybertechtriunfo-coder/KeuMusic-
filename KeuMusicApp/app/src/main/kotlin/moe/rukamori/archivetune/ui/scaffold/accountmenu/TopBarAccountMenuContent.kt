@@ -145,12 +145,6 @@ internal fun TopBarAccountMenuContent(
         onClick = onNavigateHistory,
     )
 
-    TopBarDropdownMenuItem(
-        icon = painterResource(R.drawable.newspaper),
-        title = stringResource(R.string.news),
-        badge = hasUnreadNews,
-        onClick = onNavigateNews,
-    )
 
     TopBarDropdownMenuItem(
         icon = painterResource(R.drawable.new_release),

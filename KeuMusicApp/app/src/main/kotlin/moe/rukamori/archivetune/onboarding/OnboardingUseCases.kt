@@ -127,12 +127,6 @@ class BuildOnboardingUiStateUseCase
                         subtitleResId = R.string.onboarding_customization_subtitle,
                         iconResId = R.drawable.format_paint,
                     ),
-                    OnboardingPageUiModel(
-                        id = OnboardingPageId.COMMUNITY,
-                        titleResId = R.string.onboarding_community_title,
-                        subtitleResId = R.string.onboarding_community_subtitle,
-                        iconResId = R.drawable.star,
-                    ),
                 )
 
             val communityActions =

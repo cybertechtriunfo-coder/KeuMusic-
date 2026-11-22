@@ -92,12 +92,12 @@ fun OnlineSearchResult(
         }
     }
     val allModeSections =
-        buildList<SearchSummary> {
+        buildList<Pair<SearchSummary, Boolean>> {
             searchSummary
                 ?.summaries
                 ?.firstOrNull()
                 ?.takeIf { it.items.isNotEmpty() }
-                ?.let(::add)
+                ?.let { add(it to false) }
 
             listOf(
                 FILTER_SONG to stringResource(R.string.filter_songs),
@@ -111,7 +111,7 @@ fun OnlineSearchResult(
                     ?.items
                     ?.takeIf { it.isNotEmpty() }
                     ?.let { items ->
-                        add(SearchSummary(title = sectionTitle, items = viewModel.sortedItems(items, searchSort)))
+                        add(SearchSummary(title = sectionTitle, items = viewModel.sortedItems(items, searchSort)) to (sectionFilter == FILTER_VIDEO))
                     }
             }
         }
@@ -135,7 +135,7 @@ fun OnlineSearchResult(
         }
     }
 
-    val ytItemContent: @Composable LazyItemScope.(YTItem) -> Unit = { item: YTItem ->
+    val ytItemContent: @Composable LazyItemScope.(YTItem, Boolean) -> Unit = { item, isVideoResult ->
         OnlineSearchItemRow(
             item = item,
             navController = navController,
@@ -143,6 +143,7 @@ fun OnlineSearchResult(
             isPlaying = isPlaying,
             mediaMetadata = mediaMetadata,
             coroutineScope = coroutineScope,
+            isVideoResult = isVideoResult,
             menuState = menuState,
             haptics = haptics,
         )
@@ -173,7 +174,7 @@ fun OnlineSearchResult(
             modifier = Modifier.weight(1f),
         ) {
             if (searchFilter == null) {
-                allModeSections.forEachIndexed { index, summary ->
+                allModeSections.forEachIndexed { index, (summary, isVideoSection) ->
                     if (index > 0) {
                         item(key = "divider_$index", contentType = "divider") {
                             HorizontalDivider(
@@ -196,7 +197,7 @@ fun OnlineSearchResult(
                         key = { itemIndex, item -> "${summary.title}/${item.id}/$itemIndex" },
                         contentType = { _, _ -> "search_result" },
                     ) { _, item ->
-                        ytItemContent(item)
+                        ytItemContent(item, isVideoSection)
                     }
 
                     item(
@@ -217,7 +218,7 @@ fun OnlineSearchResult(
                     items = viewModel.sortedItems(itemsPage?.items.orEmpty().distinctBy { it.id }, searchSort),
                     key = { "filtered_${it.id}" },
                     contentType = { "search_result" },
-                    itemContent = ytItemContent,
+                    itemContent = { item -> ytItemContent(item, searchFilter?.value == FILTER_VIDEO) },
                 )
 
                 if (itemsPage?.continuation != null) {

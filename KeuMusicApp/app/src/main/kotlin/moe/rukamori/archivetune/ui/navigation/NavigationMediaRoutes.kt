@@ -27,6 +27,7 @@ import moe.rukamori.archivetune.ui.screens.playlist.LocalPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.OnlinePlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.SpotifyPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.TopPlaylistScreen
+import moe.rukamori.archivetune.ui.screens.video.YouTubeVideoScreen
 
 private val ArtworkDetailPrefixes = listOf(
     "album/",
@@ -60,6 +61,15 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
     navController: NavHostController,
     scrollBehavior: TopAppBarScrollBehavior,
 ) {
+    composable(
+        route = "youtube_video/{videoId}",
+        arguments = listOf(navArgument("videoId") { type = NavType.StringType }),
+    ) { entry ->
+        entry.arguments?.getString("videoId")?.let { videoId ->
+            YouTubeVideoScreen(videoId = videoId)
+        }
+    }
+
     composable(
         route = "album/{albumId}",
         arguments =
