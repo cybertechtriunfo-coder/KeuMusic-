@@ -243,6 +243,9 @@ class MusicService :
     private var playerBeforeVideo: ExoPlayer? = null
     private var metadataBeforeVideo: MediaMetadata? = null
     private var wasPlayingBeforeVideo = false
+    private var crossfadeEnabledBeforeVideo = false
+    private var automixEnabledBeforeVideo = false
+    private var suppressAutoPlaybackBeforeVideo = false
 
     val activeVideoPlayer: ExoPlayer? get() = activeVideoPlayerInternal
 
@@ -692,6 +695,12 @@ class MusicService :
         }
 
         check(isControllerInitialized) { "O serviço de música ainda não terminou de inicializar." }
+        crossfadeEnabledBeforeVideo = crossfadeEnabled
+        automixEnabledBeforeVideo = automixEnabled
+        suppressAutoPlaybackBeforeVideo = suppressAutoPlayback
+        crossfadeEnabled = false
+        automixEnabled = false
+        suppressAutoPlayback = true
         controller.cancel()
 
         val returnPlayer = playerEngineHolder.activeDeck.player
@@ -753,9 +762,18 @@ class MusicService :
         currentMediaMetadata.value = metadataBeforeVideo
         playerBeforeVideo = null
         metadataBeforeVideo = null
+        crossfadeEnabled = crossfadeEnabledBeforeVideo
+        automixEnabled = automixEnabledBeforeVideo
+        suppressAutoPlayback = suppressAutoPlaybackBeforeVideo
+        crossfadeEnabledBeforeVideo = false
+        automixEnabledBeforeVideo = false
+        suppressAutoPlaybackBeforeVideo = false
         val resumeMusic = restoreMusic && wasPlayingBeforeVideo
         wasPlayingBeforeVideo = false
-        if (resumeMusic) returnPlayer.play()
+        if (resumeMusic) {
+            returnPlayer.play()
+            scheduleCrossfade()
+        }
         if (updateNotification) refreshPlaybackNotification()
     }
 
