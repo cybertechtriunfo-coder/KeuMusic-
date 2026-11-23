@@ -4,6 +4,7 @@
  */
 package moe.rukamori.archivetune.utils.video
 
+import android.os.SystemClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.constants.PlayerStreamClient
@@ -21,6 +22,7 @@ import timber.log.Timber
 
 internal object InnerTubeVideoResolver {
     private const val CLIENT_REQUEST_TIMEOUT_MS = 6_000L
+    private const val CACHED_CLIENT_REQUEST_TIMEOUT_MS = 4_500L
     private const val MAX_CLIENT_ATTEMPTS = 7
 
     @Volatile
@@ -53,11 +55,15 @@ internal object InnerTubeVideoResolver {
     ): ResolvedVideoStream {
         require(videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) { "ID de vídeo inválido." }
 
+        val resolutionStartedAt = SystemClock.elapsedRealtime()
         var authState = YouTube.currentPlaybackAuthState()
         authState = PlaybackAuthCoordinator.ensureVisitorDataReady(
             videoId = videoId,
             authState = authState,
             reason = "YouTube video playback",
+        )
+        Timber.tag("KeuMusicVideo").i(
+            "Auth ready for $videoId in ${SystemClock.elapsedRealtime() - resolutionStartedAt}ms",
         )
 
         val hasWebTokens = hasCompleteWebTokens(authState)
@@ -85,9 +91,13 @@ internal object InnerTubeVideoResolver {
                 authState = authState,
                 signatureTimestamp = signatureTimestamp,
                 preferredMaxHeight = preferredMaxHeight,
+                timeoutMs = if (client == cachedVideoClient) CACHED_CLIENT_REQUEST_TIMEOUT_MS else CLIENT_REQUEST_TIMEOUT_MS,
             )
             if (resolved != null) {
                 lastSuccessfulVideoClient = client
+                Timber.tag("KeuMusicVideo").i(
+                    "Resolved $videoId with ${client.clientName} in ${SystemClock.elapsedRealtime() - resolutionStartedAt}ms",
+                )
                 return resolved
             }
         }
@@ -120,8 +130,12 @@ internal object InnerTubeVideoResolver {
                     authState = authState,
                     signatureTimestamp = signatureTimestamp,
                     preferredMaxHeight = preferredMaxHeight,
+                    timeoutMs = CLIENT_REQUEST_TIMEOUT_MS,
                 )?.let {
                     lastSuccessfulVideoClient = WEB_REMIX
+                    Timber.tag("KeuMusicVideo").i(
+                        "Resolved $videoId with WEB_REMIX after token generation in ${SystemClock.elapsedRealtime() - resolutionStartedAt}ms",
+                    )
                     return it
                 }
             }
@@ -138,9 +152,11 @@ internal object InnerTubeVideoResolver {
         authState: PlaybackAuthState,
         signatureTimestamp: Int?,
         preferredMaxHeight: Int,
+        timeoutMs: Long,
     ): ResolvedVideoStream? {
+        val requestStartedAt = SystemClock.elapsedRealtime()
         val result = try {
-            withTimeoutOrNull(CLIENT_REQUEST_TIMEOUT_MS) {
+            withTimeoutOrNull(timeoutMs) {
                 YouTube.player(
                     videoId = videoId,
                     client = client,
@@ -157,9 +173,14 @@ internal object InnerTubeVideoResolver {
         }
 
         if (result == null) {
-            Timber.tag("KeuMusicVideo").w("Player request timed out for client ${client.clientName}")
+            Timber.tag("KeuMusicVideo").w(
+                "Player request timed out for client ${client.clientName} after ${SystemClock.elapsedRealtime() - requestStartedAt}ms",
+            )
             return null
         }
+        Timber.tag("KeuMusicVideo").d(
+            "Player response from ${client.clientName} in ${SystemClock.elapsedRealtime() - requestStartedAt}ms",
+        )
 
         val response = result.getOrElse { error ->
             if (error is CancellationException) throw error
