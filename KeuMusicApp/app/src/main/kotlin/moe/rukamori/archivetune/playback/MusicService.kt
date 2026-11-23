@@ -705,7 +705,17 @@ class MusicService :
             .setMediaSourceFactory(createMediaSourceFactory())
             .setRenderersFactory(createRenderersFactory(videoFilter))
             .setLoadControl(createPrimaryLoadControl())
+            .setTrackSelector(DefaultTrackSelector(this, SafeTrackSelectionFactory()))
+            .setHandleAudioBecomingNoisy(false)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            .setAudioAttributes(playbackAudioAttributes(), false)
+            .setSeekBackIncrementMs(5000)
+            .setSeekForwardIncrementMs(5000)
             .build()
+            .apply {
+                addAnalyticsListener(PlaybackStatsListener(false, playerListeners))
+                setOffloadEnabled(false)
+            }
         djFilterByPlayer[videoPlayer] = videoFilter
         activeVideoPlayerInternal = videoPlayer
 
