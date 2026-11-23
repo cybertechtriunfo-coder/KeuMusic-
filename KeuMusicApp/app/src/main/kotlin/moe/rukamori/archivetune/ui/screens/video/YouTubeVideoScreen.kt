@@ -5,10 +5,18 @@
  */
 package moe.rukamori.archivetune.ui.screens.video
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -19,7 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -31,6 +41,8 @@ import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.models.MediaMetadata as KeuMediaMetadata
+import moe.rukamori.archivetune.ui.PlayerViewModel
 import moe.rukamori.archivetune.utils.video.NewPipeVideoDownloader
 import moe.rukamori.archivetune.utils.video.NewPipeVideoResolver
 
@@ -38,6 +50,7 @@ import moe.rukamori.archivetune.utils.video.NewPipeVideoResolver
 @Composable
 fun YouTubeVideoScreen(videoId: String) {
     val context = LocalContext.current
+    val playerViewModel: PlayerViewModel = hiltViewModel()
     val validId = remember(videoId) {
         videoId.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }
     }
@@ -50,6 +63,13 @@ fun YouTubeVideoScreen(videoId: String) {
 
         if (validId == null) {
             status.value = "Vídeo inválido."
+            return@LaunchedEffect
+        }
+
+        // Reconnect to the service-owned player when returning to this screen.
+        playerViewModel.currentVideoPlayer(validId)?.let { existing ->
+            playerState.value = existing
+            status.value = ""
             return@LaunchedEffect
         }
 
@@ -69,6 +89,19 @@ fun YouTubeVideoScreen(videoId: String) {
                     mapOf("Accept-Language" to "en-US,en;q=0.8"),
                 )
 
+            val videoMetadata = androidx.media3.common.MediaMetadata.Builder()
+                .setTitle(stream.title)
+                .setArtist(stream.uploader)
+                .setArtworkUri(stream.thumbnailUrl?.let(Uri::parse))
+                .build()
+
+            val videoItem = MediaItem.Builder()
+                .setMediaId(stream.id)
+                .setMediaMetadata(videoMetadata)
+                .setUri(stream.videoUrl)
+                .setMimeType(stream.videoMimeType)
+                .build()
+
             val mediaSource = when (stream.sourceType) {
                 NewPipeVideoResolver.SourceType.MERGED -> {
                     val audioUrl = stream.audioUrl
@@ -76,52 +109,46 @@ fun YouTubeVideoScreen(videoId: String) {
                     val audioMimeType = stream.audioMimeType ?: "audio/mp4"
 
                     val videoSource = ProgressiveMediaSource.Factory(httpFactory)
-                        .createMediaSource(
-                            MediaItem.Builder()
-                                .setUri(stream.videoUrl)
-                                .setMimeType(stream.videoMimeType)
-                                .build(),
-                        )
+                        .createMediaSource(videoItem)
+                    val audioItem = MediaItem.Builder()
+                        .setMediaId("${stream.id}:audio")
+                        .setUri(audioUrl)
+                        .setMimeType(audioMimeType)
+                        .build()
                     val audioSource = ProgressiveMediaSource.Factory(httpFactory)
-                        .createMediaSource(
-                            MediaItem.Builder()
-                                .setUri(audioUrl)
-                                .setMimeType(audioMimeType)
-                                .build(),
-                        )
+                        .createMediaSource(audioItem)
                     MergingMediaSource(videoSource, audioSource)
                 }
 
                 NewPipeVideoResolver.SourceType.PROGRESSIVE ->
                     ProgressiveMediaSource.Factory(httpFactory)
-                        .createMediaSource(
-                            MediaItem.Builder()
-                                .setUri(stream.videoUrl)
-                                .setMimeType(stream.videoMimeType)
-                                .build(),
-                        )
+                        .createMediaSource(videoItem)
 
                 NewPipeVideoResolver.SourceType.HLS,
                 NewPipeVideoResolver.SourceType.DASH ->
                     DefaultMediaSourceFactory(httpFactory)
-                        .createMediaSource(
-                            MediaItem.Builder()
-                                .setUri(stream.videoUrl)
-                                .setMimeType(stream.videoMimeType)
-                                .build(),
-                        )
+                        .createMediaSource(videoItem)
             }
 
-            val exo = ExoPlayer.Builder(context).build()
-            exo.setMediaSource(mediaSource)
-            exo.prepare()
-            exo.playWhenReady = true
+            val keuMetadata = KeuMediaMetadata(
+                id = stream.id,
+                title = stream.title,
+                artists = listOf(KeuMediaMetadata.Artist(id = null, name = stream.uploader)),
+                duration = stream.durationSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                thumbnailUrl = stream.thumbnailUrl,
+                isMusicVideo = true,
+            )
+
+            // MusicService owns this player and exposes it through the same
+            // MediaSession used by songs. Leaving the screen no longer releases it.
+            val exo = playerViewModel.startVideoPlayback(mediaSource, keuMetadata)
+                ?: error("O player principal do KeuMusic ainda não está conectado.")
 
             playerState.value = exo
             status.value = ""
             Log.i(
                 "KeuMusicVideo",
-                "Vídeo resolvido: source=" + stream.sourceType +
+                "Vídeo iniciado na sessão principal: source=" + stream.sourceType +
                     ", altura=" + stream.selectedHeight +
                     ", áudioSeparado=" + (stream.audioUrl != null),
             )
@@ -135,9 +162,10 @@ fun YouTubeVideoScreen(videoId: String) {
 
     val activePlayer = playerState.value
 
+    // Detach only the surface when the screen closes; MusicService keeps audio alive.
     DisposableEffect(activePlayer) {
         onDispose {
-            activePlayer?.release()
+            activePlayer?.clearVideoSurface()
         }
     }
 
@@ -150,13 +178,33 @@ fun YouTubeVideoScreen(videoId: String) {
                 factory = { viewContext ->
                     PlayerView(viewContext).apply {
                         useController = true
-                        player = activePlayer
+                        controllerShowTimeoutMs = 3500
                         setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                        player = activePlayer
                     }
                 },
                 update = { it.player = activePlayer },
                 modifier = Modifier.fillMaxSize(),
             )
+
+            IconButton(
+                onClick = {
+                    playerViewModel.stopVideoPlayback()
+                    playerState.value = null
+                    status.value = "Vídeo encerrado."
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(14.dp)
+                    .size(42.dp)
+                    .background(Color(0xFF6C3BDB), CircleShape),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Encerrar vídeo",
+                    tint = Color.White,
+                )
+            }
         } else {
             Text(
                 text = status.value,
