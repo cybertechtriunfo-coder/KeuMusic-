@@ -11,7 +11,7 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeClient
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_REMIX
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
-import moe.rukamori.archivetune.utils.PlaybackStreamUrlDecipher
+import moe.rukamori.archivetune.utils.resolver.PlaybackStreamUrlDecipher
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
 import moe.rukamori.archivetune.utils.resolver.PlaybackAuthCoordinator
 import moe.rukamori.archivetune.utils.resolver.PlaybackClientSelector
@@ -36,6 +36,7 @@ internal object InnerTubeVideoResolver {
         val sourceType: SourceType,
         val selectedHeight: Int?,
         val clientName: String,
+        val requestHeaders: Map<String, String>,
     )
 
     suspend fun resolve(
@@ -173,6 +174,7 @@ internal object InnerTubeVideoResolver {
                 sourceType = SourceType.PROGRESSIVE,
                 selectedHeight = format.height,
                 clientName = client.clientName,
+                requestHeaders = buildStreamHeaders(client),
             )
         }
 
@@ -212,6 +214,7 @@ internal object InnerTubeVideoResolver {
                     sourceType = SourceType.MERGED,
                     selectedHeight = videoFormat.height,
                     clientName = client.clientName,
+                    requestHeaders = buildStreamHeaders(client),
                 )
             }
         }
@@ -225,6 +228,13 @@ internal object InnerTubeVideoResolver {
             { it.height?.let { height -> if (height <= maxHeight) -height else height } ?: Int.MAX_VALUE },
             { -(it.bitrate) },
         )
+
+    private fun buildStreamHeaders(client: YouTubeClient): Map<String, String> = mapOf(
+        "User-Agent" to client.userAgent,
+        "Origin" to client.requestOrigin(),
+        "Referer" to client.requestReferer(),
+        "Accept-Language" to "en-US,en;q=0.8",
+    )
 
     private fun hasCompleteWebTokens(authState: PlaybackAuthState): Boolean =
         authState.webClientPoTokenEnabled &&
