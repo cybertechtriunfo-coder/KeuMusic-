@@ -89,6 +89,15 @@ fun YouTubeVideoScreen(videoId: String) {
                     mapOf("Accept-Language" to "en-US,en;q=0.8"),
                 )
 
+            val keuMetadata = KeuMediaMetadata(
+                id = stream.id,
+                title = stream.title,
+                artists = listOf(KeuMediaMetadata.Artist(id = null, name = stream.uploader)),
+                duration = stream.durationSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                thumbnailUrl = stream.thumbnailUrl,
+                isMusicVideo = true,
+            )
+
             val videoMetadata = androidx.media3.common.MediaMetadata.Builder()
                 .setTitle(stream.title)
                 .setArtist(stream.uploader)
@@ -97,6 +106,7 @@ fun YouTubeVideoScreen(videoId: String) {
 
             val videoItem = MediaItem.Builder()
                 .setMediaId(stream.id)
+                .setTag(keuMetadata)
                 .setMediaMetadata(videoMetadata)
                 .setUri(stream.videoUrl)
                 .setMimeType(stream.videoMimeType)
@@ -129,15 +139,6 @@ fun YouTubeVideoScreen(videoId: String) {
                     DefaultMediaSourceFactory(httpFactory)
                         .createMediaSource(videoItem)
             }
-
-            val keuMetadata = KeuMediaMetadata(
-                id = stream.id,
-                title = stream.title,
-                artists = listOf(KeuMediaMetadata.Artist(id = null, name = stream.uploader)),
-                duration = stream.durationSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
-                thumbnailUrl = stream.thumbnailUrl,
-                isMusicVideo = true,
-            )
 
             // MusicService owns this player and exposes it through the same
             // MediaSession used by songs. Leaving the screen no longer releases it.
