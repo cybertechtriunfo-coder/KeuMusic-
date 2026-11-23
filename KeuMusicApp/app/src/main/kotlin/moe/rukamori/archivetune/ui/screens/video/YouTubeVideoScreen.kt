@@ -7,12 +7,6 @@ package moe.rukamori.archivetune.ui.screens.video
 
 import android.net.Uri
 import android.util.Log
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,7 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -148,17 +142,6 @@ fun YouTubeVideoScreen(
         }
     }
 
-    val transition = rememberInfiniteTransition(label = "keumusic-video-loading")
-    val rotation by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "video-loading-rotation",
-    )
-
     Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
         val activePlayer = playerState
         if (activePlayer != null) {
@@ -192,14 +175,13 @@ fun YouTubeVideoScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 if (isLoading) {
-                    Text("🎬", color = Color.White,
-                        modifier = Modifier.size(64.dp).graphicsLayer { rotationZ = rotation })
-                    Spacer(Modifier.height(18.dp))
                     Text("Preparando seu vídeo", color = Color.White)
-                    Spacer(Modifier.height(6.dp))
-                    Text("Estamos preparando tudo para você! ✨", color = Color.LightGray)
-                    Spacer(Modifier.height(20.dp))
-                    CircularProgressIndicator(color = Color(0xFFB69CFF))
+                    Spacer(Modifier.height(18.dp))
+                    LinearWavyProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().height(6.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color(0xFF424242),
+                    )
                 } else {
                     Text(status, color = Color.White)
                     if (validId != null) {
