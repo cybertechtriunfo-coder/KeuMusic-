@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - integracao-motor-video-yt-dlp-20261122
+      - feature/keumusic-video-player-20261123
   workflow_dispatch:
 
 permissions:
