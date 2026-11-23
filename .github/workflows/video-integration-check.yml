@@ -5,6 +5,10 @@ on:
     branches:
       - integracao-motor-video-yt-dlp-20261122
 
+concurrency:
+  group: video-integration-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
