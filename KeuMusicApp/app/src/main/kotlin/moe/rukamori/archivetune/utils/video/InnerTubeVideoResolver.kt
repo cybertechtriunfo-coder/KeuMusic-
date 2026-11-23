@@ -174,7 +174,7 @@ internal object InnerTubeVideoResolver {
                 sourceType = SourceType.PROGRESSIVE,
                 selectedHeight = format.height,
                 clientName = client.clientName,
-                requestHeaders = buildStreamHeaders(client),
+                requestHeaders = buildStreamHeaders(client, authState),
             )
         }
 
@@ -229,12 +229,18 @@ internal object InnerTubeVideoResolver {
             { -(it.bitrate) },
         )
 
-    private fun buildStreamHeaders(client: YouTubeClient): Map<String, String> = mapOf(
-        "User-Agent" to client.userAgent,
-        "Origin" to client.requestOrigin(),
-        "Referer" to client.requestReferer(),
-        "Accept-Language" to "en-US,en;q=0.8",
-    )
+    private fun buildStreamHeaders(
+        client: YouTubeClient,
+        authState: PlaybackAuthState,
+    ): Map<String, String> = buildMap {
+        put("User-Agent", client.userAgent)
+        put("Origin", client.requestOrigin())
+        put("Referer", client.requestReferer())
+        put("Accept-Language", "en-US,en;q=0.8")
+        put("X-YouTube-Client-Name", client.clientId)
+        put("X-YouTube-Client-Version", client.clientVersion)
+        authState.cookie?.takeIf { it.isNotBlank() }?.let { put("Cookie", it) }
+    }
 
     private fun hasCompleteWebTokens(authState: PlaybackAuthState): Boolean =
         authState.webClientPoTokenEnabled &&
