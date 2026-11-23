@@ -5,6 +5,7 @@
  */
 package moe.rukamori.archivetune.utils.video
 
+import java.io.IOException
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request as OkHttpRequest
@@ -16,9 +17,10 @@ import java.util.concurrent.TimeUnit
 
 internal class NewPipeVideoDownloader(
     private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(45, TimeUnit.SECONDS)
-        .writeTimeout(20, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
+        .callTimeout(35, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build(),
 ) : Downloader() {
@@ -28,15 +30,10 @@ internal class NewPipeVideoDownloader(
         var hasUserAgent = false
 
         request.headers().forEach { (name, values) ->
-            if (name.equals("User-Agent", ignoreCase = true)) {
-                hasUserAgent = true
-            }
+            if (name.equals("User-Agent", ignoreCase = true)) hasUserAgent = true
             values.forEach { value -> builder.addHeader(name, value) }
         }
-
-        if (!hasUserAgent) {
-            builder.header("User-Agent", USER_AGENT)
-        }
+        if (!hasUserAgent) builder.header("User-Agent", USER_AGENT)
 
         val method = request.httpMethod()
         val data = request.dataToSend()
@@ -46,22 +43,38 @@ internal class NewPipeVideoDownloader(
             else -> {
                 val contentType = request.headers().entries
                     .firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }
-                    ?.value
-                    ?.firstOrNull()
-                    ?.toMediaTypeOrNull()
-                val body = (data ?: ByteArray(0)).toRequestBody(contentType)
-                builder.method(method, body)
+                    ?.value?.firstOrNull()?.toMediaTypeOrNull()
+                builder.method(method, (data ?: ByteArray(0)).toRequestBody(contentType))
             }
         }
 
         client.newCall(builder.build()).execute().use { response ->
             val body = response.body?.string().orEmpty()
+            val url = response.request.url.toString()
+            val contentType = response.header("Content-Type").orEmpty()
+            val isYoutubeJsonEndpoint = url.contains("youtubei.googleapis.com", ignoreCase = true)
+            val looksLikeHtml = contentType.contains("text/html", ignoreCase = true) ||
+                body.trimStart().startsWith("<!doctype html", ignoreCase = true) ||
+                body.trimStart().startsWith("<html", ignoreCase = true)
+
+            // YouTube sometimes returns an HTML challenge/block page for an API call.
+            // Passing that page to NewPipe's JSON parser produces the misleading
+            // "Got HTML document, expected JSON response" error.
+            if (isYoutubeJsonEndpoint && looksLikeHtml) {
+                val reason = when (response.code) {
+                    403 -> "YouTube recusou a solicitação (HTTP 403)."
+                    429 -> "YouTube limitou temporariamente as solicitações (HTTP 429)."
+                    else -> "YouTube retornou uma página HTML em vez de JSON (HTTP ${response.code})."
+                }
+                throw IOException("$reason URL: $url")
+            }
+
             return NewPipeResponse(
                 response.code,
                 response.message,
                 response.headers.toMultimap(),
                 body,
-                response.request.url.toString(),
+                url,
             )
         }
     }
