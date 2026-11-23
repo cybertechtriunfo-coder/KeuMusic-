@@ -160,7 +160,7 @@ class PlayerViewModel @Inject constructor(
 
     val progressTicker = ProgressTicker(
         coroutineScope = viewModelScope,
-        audioPlayerProvider = { audioPlayer },
+        audioPlayerProvider = { playerConnection?.service?.activeVideoPlayer ?: audioPlayer },
         updatePlaybackProgress = { progressMs -> _playbackProgress.value = progressMs },
         updateDuration = { durationMs ->
             _uiState.update { current ->
@@ -517,7 +517,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun seekTo(positionMs: Long) {
-        audioPlayer?.seekTo(positionMs)
+        (playerConnection?.service?.activeVideoPlayer ?: audioPlayer)?.seekTo(positionMs)
         progressTicker.onSeekFinished()
         _playbackProgress.value = positionMs
     }
