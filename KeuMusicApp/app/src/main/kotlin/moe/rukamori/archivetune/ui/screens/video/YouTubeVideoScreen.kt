@@ -178,6 +178,12 @@ fun YouTubeVideoScreen(videoId: String) {
                     }
                 },
                 update = { it.player = activePlayer },
+                onRelease = { view ->
+                    // Player belongs to MusicService; detach the UI view only.
+                    // This prevents a disposed PlayerView from retaining the Activity
+                    // or screen while playback continues in the background.
+                    view.player = null
+                },
                 modifier = Modifier.fillMaxSize(),
             )
 
