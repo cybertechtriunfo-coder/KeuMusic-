@@ -12,6 +12,7 @@ import moe.rukamori.archivetune.playback.engine.ExoDeck
 import moe.rukamori.archivetune.playback.engine.ExoDeckController
 import moe.rukamori.archivetune.playback.engine.SafeTrackSelectionFactory
 import moe.rukamori.archivetune.playback.recovery.PlaybackRecoveryEngine
+import moe.rukamori.archivetune.playback.recovery.RecoveryDecision
 import moe.rukamori.archivetune.playback.recovery.PlaybackStreamRecoveryTracker
 import moe.rukamori.archivetune.playback.resolvers.updateActualPlaybackSources
 import moe.rukamori.archivetune.playback.together.ServiceTogetherCoordinator
@@ -827,7 +828,13 @@ class MusicService :
     internal fun isCurrentPlaybackItemLocal(currentMediaMetadata: MediaMetadata): Boolean =
         currentSong.value?.song?.isLocal == true || currentMediaMetadata.id.trim().isLocalMediaId() || player.currentMediaItem?.localConfiguration?.uri?.shouldBypassPlayerCache() == true
 
-    internal fun onPlayerError(error: PlaybackException) = playbackRecoveryEngine.onPlayerError(error)
+    internal fun onPlayerError(error: PlaybackException): RecoveryDecision =
+        if (activeVideoPlayerInternal != null) {
+            // Never route a video HTTP failure into the audio-only song recovery path.
+            RecoveryDecision.None
+        } else {
+            playbackRecoveryEngine.onPlayerError(error)
+        }
 
     internal suspend fun handlePresenceAndListenBrainz(
         mediaId: String?, mediaMetadata: MediaMetadata?, durationMs: Long, positionMs: Long, reason: String,
