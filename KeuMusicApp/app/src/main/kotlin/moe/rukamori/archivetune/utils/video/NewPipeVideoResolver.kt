@@ -5,6 +5,8 @@
  */
 package moe.rukamori.archivetune.utils.video
 
+import android.os.SystemClock
+import java.util.concurrent.ConcurrentHashMap
 import org.schabi.newpipe.extractor.MediaFormat
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
@@ -12,6 +14,13 @@ import org.schabi.newpipe.extractor.stream.StreamType
 import org.schabi.newpipe.extractor.stream.VideoStream
 
 internal object NewPipeVideoResolver {
+    private data class CachedStream(val value: ResolvedVideo, val createdAtMs: Long)
+
+    // Stream URLs expire; keep only a short-lived cache for repeat selections.
+    private const val CACHE_TTL_MS = 45_000L
+    private const val MAX_CACHE_ENTRIES = 24
+    private val streamCache = ConcurrentHashMap<String, CachedStream>()
+
     enum class SourceType {
         PROGRESSIVE,
         MERGED,
@@ -33,9 +42,28 @@ internal object NewPipeVideoResolver {
         val selectedHeight: Int,
     )
 
+    @Synchronized
     fun resolve(videoId: String, preferredMaxHeight: Int): ResolvedVideo {
+        require(videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) { "ID de vídeo inválido." }
         NewPipeVideoRuntime.initialize()
 
+        val cacheKey = "$videoId:$preferredMaxHeight"
+        val now = SystemClock.elapsedRealtime()
+        streamCache[cacheKey]?.let { cached ->
+            if (now - cached.createdAtMs < CACHE_TTL_MS) return cached.value
+            streamCache.remove(cacheKey, cached)
+        }
+
+        val resolved = resolveUncached(videoId, preferredMaxHeight)
+        if (streamCache.size >= MAX_CACHE_ENTRIES) {
+            val oldest = streamCache.entries.minByOrNull { it.value.createdAtMs }?.key
+            if (oldest != null) streamCache.remove(oldest)
+        }
+        streamCache[cacheKey] = CachedStream(resolved, SystemClock.elapsedRealtime())
+        return resolved
+    }
+
+    private fun resolveUncached(videoId: String, preferredMaxHeight: Int): ResolvedVideo {
         val info = StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId")
         val thumbnailUrl = info.thumbnails
             ?.lastOrNull()
