@@ -240,7 +240,7 @@ class MusicService :
 
     // Video playback is owned by MusicService, not by the Compose screen.
     private var activeVideoPlayerInternal: ExoPlayer? = null
-    private var playerBeforeVideo: ExoPlayer? = null
+    private var playerBeforeVideo: Player? = null
     private var metadataBeforeVideo: MediaMetadata? = null
     private var wasPlayingBeforeVideo = false
     private var crossfadeEnabledBeforeVideo = false
