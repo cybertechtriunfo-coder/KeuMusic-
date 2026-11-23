@@ -2,6 +2,8 @@ package moe.rukamori.archivetune.ui
 
 import android.app.Application
 import androidx.lifecycle.ViewModel
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.MediaSource
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import moe.rukamori.archivetune.data.repository.SettingsRepository
@@ -14,6 +16,7 @@ import moe.rukamori.archivetune.lyrics.model.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.language.LyricsTranslationUseCase
 import moe.rukamori.archivetune.lyrics.language.LyricsTranslationUseCaseImpl
+import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.ParsedIntentAction
 import moe.rukamori.archivetune.repository.LyricsRepository
 import moe.rukamori.archivetune.search.AddSearchHistoryUseCase
@@ -70,6 +73,17 @@ class PlayerViewModel @Inject constructor(
 ) : ViewModel() {
     private val playerConnection get() = connectionHolder.connection.value
     private val audioPlayer get() = playerConnection?.player
+
+    fun currentVideoPlayer(videoId: String): ExoPlayer? =
+        playerConnection?.service?.activeVideoPlayer
+            ?.takeIf { it.currentMediaItem?.mediaId == videoId }
+
+    fun startVideoPlayback(mediaSource: MediaSource, metadata: MediaMetadata): ExoPlayer? =
+        playerConnection?.service?.startVideoPlayback(mediaSource, metadata)
+
+    fun stopVideoPlayback() {
+        playerConnection?.service?.stopVideoPlayback(restoreMusic = false)
+    }
 
     private val effectiveLyricsRepository: LyricsRepository = lyricsRepository ?: object : LyricsRepository {
         override suspend fun getLyricsById(id: String): LyricsEntity? =
