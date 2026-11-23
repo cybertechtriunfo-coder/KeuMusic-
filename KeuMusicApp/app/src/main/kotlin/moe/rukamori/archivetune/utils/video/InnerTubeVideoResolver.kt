@@ -214,7 +214,7 @@ internal object InnerTubeVideoResolver {
                     sourceType = SourceType.MERGED,
                     selectedHeight = videoFormat.height,
                     clientName = client.clientName,
-                    requestHeaders = buildStreamHeaders(client),
+                    requestHeaders = buildStreamHeaders(client, authState),
                 )
             }
         }
