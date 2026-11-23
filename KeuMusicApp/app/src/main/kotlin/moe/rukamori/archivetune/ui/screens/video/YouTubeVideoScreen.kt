@@ -3,6 +3,8 @@
  * ArchiveTune (2026) | Original work by © Rukamori
  * GPL-3.0 License | Contributors: see git history
  */
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package moe.rukamori.archivetune.ui.screens.video
 
 import android.net.Uri
