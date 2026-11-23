@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.common.util.UnstableApi
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import moe.rukamori.archivetune.data.repository.SettingsRepository
@@ -78,6 +79,7 @@ class PlayerViewModel @Inject constructor(
         playerConnection?.service?.activeVideoPlayer
             ?.takeIf { it.currentMediaItem?.mediaId == videoId }
 
+    @OptIn(UnstableApi::class)
     fun startVideoPlayback(mediaSource: MediaSource, metadata: MediaMetadata): ExoPlayer? =
         playerConnection?.service?.startVideoPlayback(mediaSource, metadata)
 
