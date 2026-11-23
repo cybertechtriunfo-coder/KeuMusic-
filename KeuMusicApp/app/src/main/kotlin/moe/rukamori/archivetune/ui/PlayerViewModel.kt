@@ -19,6 +19,9 @@ import moe.rukamori.archivetune.lyrics.language.LyricsTranslationUseCase
 import moe.rukamori.archivetune.lyrics.language.LyricsTranslationUseCaseImpl
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.ParsedIntentAction
+import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.repository.LyricsRepository
 import moe.rukamori.archivetune.search.AddSearchHistoryUseCase
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -194,6 +197,75 @@ class PlayerViewModel @Inject constructor(
     private val _event = Channel<PlayerEvent>(Channel.BUFFERED)
     val event: Flow<PlayerEvent> = _event.receiveAsFlow()
 
+    private val videoHistory = mutableListOf<String>()
+    private var videoHistoryIndex = -1
+    private var videoNextEndpoint: WatchEndpoint? = null
+    private var videoNextContinuation: String? = null
+
+    fun registerVideoPlayback(videoId: String) {
+        val existingIndex = videoHistory.indexOf(videoId)
+        if (existingIndex >= 0) {
+            videoHistoryIndex = existingIndex
+            return
+        }
+
+        if (videoHistoryIndex in 0 until videoHistory.lastIndex) {
+            videoHistory.subList(videoHistoryIndex + 1, videoHistory.size).clear()
+        }
+        videoHistory.add(videoId)
+        videoHistoryIndex = videoHistory.lastIndex
+        videoNextEndpoint = WatchEndpoint(videoId = videoId)
+        videoNextContinuation = null
+    }
+
+    fun requestSheetExpand() {
+        _event.trySend(PlayerEvent.ExpandPlayer)
+    }
+
+    private fun playPreviousVideo() {
+        if (videoHistoryIndex <= 0) return
+        videoHistoryIndex--
+        _event.trySend(PlayerEvent.Navigate("youtube_video/${videoHistory[videoHistoryIndex]}"))
+    }
+
+    private fun playNextVideo() {
+        if (videoHistoryIndex in 0 until videoHistory.lastIndex) {
+            videoHistoryIndex++
+            _event.trySend(PlayerEvent.Navigate("youtube_video/${videoHistory[videoHistoryIndex]}"))
+            return
+        }
+
+        val currentVideoId = videoHistory.getOrNull(videoHistoryIndex)
+            ?: playerConnection?.service?.activeVideoPlayer?.currentMediaItem?.mediaId
+            ?: return
+
+        viewModelScope.launch {
+            try {
+                val nextResult = YouTube.next(
+                    endpoint = videoNextEndpoint ?: WatchEndpoint(videoId = currentVideoId),
+                    continuation = videoNextContinuation,
+                    followAutomixPreview = false,
+                ).getOrThrow()
+                videoNextEndpoint = nextResult.endpoint
+                videoNextContinuation = nextResult.continuation
+
+                val nextVideoId = nextResult.items
+                    .filterIsInstance<SongItem>()
+                    .asSequence()
+                    .map { it.id }
+                    .firstOrNull { it.isNotBlank() && it !in videoHistory }
+
+                if (nextVideoId != null) {
+                    videoHistory.add(nextVideoId)
+                    videoHistoryIndex = videoHistory.lastIndex
+                    _event.send(PlayerEvent.Navigate("youtube_video/$nextVideoId"))
+                }
+            } catch (error: Exception) {
+                android.util.Log.w("KeuMusicVideo", "Não foi possível carregar o próximo vídeo", error)
+            }
+        }
+    }
+
     init {
         // Подписка на лирику из базы данных через холдер плеера
         viewModelScope.launch {
@@ -225,6 +297,20 @@ class PlayerViewModel @Inject constructor(
     // Единая точка входа для UI-действий шторки
     // ==========================================
     fun handleAction(action: PlayerAction) {
+        if (playerConnection?.service?.activeVideoPlayer != null) {
+            when (action) {
+                is PlayerAction.Next, is PlayerAction.SkipNext -> {
+                    playNextVideo()
+                    return
+                }
+                is PlayerAction.Previous, is PlayerAction.SkipPrevious -> {
+                    playPreviousVideo()
+                    return
+                }
+                else -> Unit
+            }
+        }
+
         when (action) {
             is PlayerAction.PlayPause -> playbackStateHolder.togglePlayPause()
             is PlayerAction.Next, is PlayerAction.SkipNext -> playbackStateHolder.playNext()
@@ -280,8 +366,12 @@ class PlayerViewModel @Inject constructor(
             }
             is PlayerAction.Dismiss -> {
                 _uiState.update { it.copy(trackUrl = "", title = "", artist = "", coverUrl = "", isPlaying = false) }
-                audioPlayer?.stop()
-                audioPlayer?.clearMediaItems()
+                if (playerConnection?.service?.activeVideoPlayer != null) {
+                    stopVideoPlayback()
+                } else {
+                    audioPlayer?.stop()
+                    audioPlayer?.clearMediaItems()
+                }
             }
             is PlayerAction.TranslateLyrics -> translateLyrics(action.langCode, action.useAi)
             is PlayerAction.DeleteLyrics -> deleteLyricsCache()

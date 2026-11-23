@@ -23,6 +23,9 @@ internal object InnerTubeVideoResolver {
     private const val CLIENT_REQUEST_TIMEOUT_MS = 6_000L
     private const val MAX_CLIENT_ATTEMPTS = 7
 
+    @Volatile
+    private var lastSuccessfulVideoClient: YouTubeClient? = null
+
     enum class SourceType {
         PROGRESSIVE,
         MERGED,
@@ -63,16 +66,19 @@ internal object InnerTubeVideoResolver {
             .buildStreamClientOrder(PlayerStreamClient.ANDROID_VR, authState)
             .filterNot { it == WEB_REMIX }
             .let { clients ->
-                // The selector puts VISIONOS first by default. For video extraction,
-                // prefer the last successful client (when available) and the configured
-                // playback client before spending time on that generic fallback.
                 clients.filterNot { it == VISIONOS } + clients.filter { it == VISIONOS }
             }
             .let { fallback ->
                 if (hasWebTokens) listOf(WEB_REMIX) + fallback else fallback
             }
+        val cachedVideoClient = lastSuccessfulVideoClient
+        val prioritizedClientOrder = if (cachedVideoClient == null) {
+            clientOrder
+        } else {
+            listOf(cachedVideoClient) + clientOrder.filterNot { it == cachedVideoClient }
+        }
 
-        for (client in clientOrder.take(MAX_CLIENT_ATTEMPTS)) {
+        for (client in prioritizedClientOrder.take(MAX_CLIENT_ATTEMPTS)) {
             val resolved = tryClient(
                 videoId = videoId,
                 client = client,
@@ -80,7 +86,10 @@ internal object InnerTubeVideoResolver {
                 signatureTimestamp = signatureTimestamp,
                 preferredMaxHeight = preferredMaxHeight,
             )
-            if (resolved != null) return resolved
+            if (resolved != null) {
+                lastSuccessfulVideoClient = client
+                return resolved
+            }
         }
 
         // Web Remix is the client for which this app already has a WebView BotGuard
@@ -111,7 +120,10 @@ internal object InnerTubeVideoResolver {
                     authState = authState,
                     signatureTimestamp = signatureTimestamp,
                     preferredMaxHeight = preferredMaxHeight,
-                )?.let { return it }
+                )?.let {
+                    lastSuccessfulVideoClient = WEB_REMIX
+                    return it
+                }
             }
         }
 

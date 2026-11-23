@@ -62,6 +62,11 @@ internal fun PlayerOverlayEffects(
                         launchSingleTop = true
                     }
                 }
+                PlayerEvent.ExpandPlayer -> {
+                    if (!sheetState.isExpandedOrExpanding) {
+                        sheetState.expandSoft()
+                    }
+                }
             }
         }
     }
