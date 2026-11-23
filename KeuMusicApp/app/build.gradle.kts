@@ -54,7 +54,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 8
-        versionName = "1.2.0-RC.3"
+        versionName = "1.0"
 
         manifestPlaceholders["appName"] = "@string/app_name"
 
