@@ -55,6 +55,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -236,6 +237,14 @@ class MusicService :
         )
     }
     private val binder = MusicBinder()
+
+    // Video playback is owned by MusicService, not by the Compose screen.
+    private var activeVideoPlayerInternal: ExoPlayer? = null
+    private var playerBeforeVideo: ExoPlayer? = null
+    private var metadataBeforeVideo: MediaMetadata? = null
+    private var wasPlayingBeforeVideo = false
+
+    val activeVideoPlayer: ExoPlayer? get() = activeVideoPlayerInternal
 
     override lateinit var connectivityManager: ConnectivityManager
     override lateinit var connectivityObserver: NetworkConnectivityObserver
@@ -675,9 +684,83 @@ class MusicService :
     internal suspend fun recoverSong(mediaId: String, playbackData: YTPlayerUtils.PlaybackData? = null) =
         playbackRecoveryEngine.recoverSong(mediaId, playbackData)
 
-    fun playQueue(queue: Queue, playWhenReady: Boolean = true) = playQueueInternal(queue, playWhenReady)
-    fun startRadioSeamlessly() = startRadioSeamlesslyInternal()
-    fun clearQueue() = clearQueueInternal()
+    @UnstableApi
+    fun startVideoPlayback(mediaSource: MediaSource, metadata: MediaMetadata): ExoPlayer {
+        activeVideoPlayerInternal?.let { current ->
+            if (current.currentMediaItem?.mediaId == metadata.id) return current
+            stopVideoPlayback(restoreMusic = false)
+        }
+
+        check(isControllerInitialized) { "O serviço de música ainda não terminou de inicializar." }
+        controller.cancel()
+
+        val returnPlayer = playerEngineHolder.activeDeck.player
+        playerBeforeVideo = returnPlayer
+        wasPlayingBeforeVideo = returnPlayer.isPlaying
+        metadataBeforeVideo = currentMediaMetadata.value
+        returnPlayer.pause()
+
+        val videoFilter = DjFilterAudioProcessor()
+        val videoPlayer = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(createMediaSourceFactory())
+            .setRenderersFactory(createRenderersFactory(videoFilter))
+            .setLoadControl(createPrimaryLoadControl())
+            .build()
+        djFilterByPlayer[videoPlayer] = videoFilter
+        activeVideoPlayerInternal = videoPlayer
+
+        // The same forwarding player is exposed by the existing MediaLibrarySession.
+        // Swapping its delegate keeps notification, lock-screen and headset controls.
+        playerEngineHolder.dualForwardingPlayer.attachPlayer(videoPlayer)
+        transferAudioEffects(videoPlayer)
+        currentMediaMetadata.value = metadata
+
+        ensureStartedAsForeground()
+        promoteToStartedService()
+        videoPlayer.setMediaSource(mediaSource)
+        videoPlayer.prepare()
+        videoPlayer.playWhenReady = true
+        refreshPlaybackNotification()
+        return videoPlayer
+    }
+
+    fun stopVideoPlayback(restoreMusic: Boolean = false, updateNotification: Boolean = true) {
+        val videoPlayer = activeVideoPlayerInternal ?: return
+        activeVideoPlayerInternal = null
+
+        val returnPlayer = playerBeforeVideo ?: playerEngineHolder.activeDeck.player
+        videoPlayer.playWhenReady = false
+        videoPlayer.pause()
+        videoPlayer.removeListener(playerListeners.audioEffectPlayerListener)
+        playerEngineHolder.dualForwardingPlayer.attachPlayer(returnPlayer)
+        returnPlayer.addListener(playerListeners.audioEffectPlayerListener)
+
+        djFilterByPlayer.remove(videoPlayer)
+        runCatching { videoPlayer.clearVideoSurface() }
+        runCatching { videoPlayer.clearMediaItems() }
+        videoPlayer.release()
+
+        currentMediaMetadata.value = metadataBeforeVideo
+        playerBeforeVideo = null
+        metadataBeforeVideo = null
+        val resumeMusic = restoreMusic && wasPlayingBeforeVideo
+        wasPlayingBeforeVideo = false
+        if (resumeMusic) returnPlayer.play()
+        if (updateNotification) refreshPlaybackNotification()
+    }
+
+    fun playQueue(queue: Queue, playWhenReady: Boolean = true) {
+        stopVideoPlayback(restoreMusic = false)
+        playQueueInternal(queue, playWhenReady)
+    }
+    fun startRadioSeamlessly() {
+        stopVideoPlayback(restoreMusic = false)
+        startRadioSeamlesslyInternal()
+    }
+    fun clearQueue() {
+        stopVideoPlayback(restoreMusic = false)
+        clearQueueInternal()
+    }
     fun onInfiniteQueueDisabled() = onInfiniteQueueDisabledInternal()
     fun onInfiniteQueueEnabled() = onInfiniteQueueEnabledInternal()
     fun requestQueuePagination() {
@@ -688,10 +771,22 @@ class MusicService :
         val queue = currentQueue as? SpotifyQueue ?: return false
         return queue.hasPreviousPage() || playerListeners.hasPendingBackwardBatch()
     }
-    fun stopAndClearPlayback(clearPersistentState: Boolean = false) = stopAndClearPlaybackInternal(clearPersistentState)
-    fun playNext(items: List<MediaItem>) = playNextInternal(items)
-    fun addToQueue(items: List<MediaItem>) = addToQueueInternal(items)
-    fun playFromVoiceSearch(query: String) = playFromVoiceSearchInternal(query)
+    fun stopAndClearPlayback(clearPersistentState: Boolean = false) {
+        stopVideoPlayback(restoreMusic = false)
+        stopAndClearPlaybackInternal(clearPersistentState)
+    }
+    fun playNext(items: List<MediaItem>) {
+        stopVideoPlayback(restoreMusic = false)
+        playNextInternal(items)
+    }
+    fun addToQueue(items: List<MediaItem>) {
+        stopVideoPlayback(restoreMusic = false)
+        addToQueueInternal(items)
+    }
+    fun playFromVoiceSearch(query: String) {
+        stopVideoPlayback(restoreMusic = false)
+        playFromVoiceSearchInternal(query)
+    }
     internal fun toggleLibrary() = toggleLibraryInternal()
     fun toggleLike() = toggleLikeInternal()
     fun toggleStartRadio() = toggleStartRadioInternal()
@@ -877,7 +972,10 @@ class MusicService :
         player.removeListener(sleepTimer)
     }
 
-    override fun releasePlayer() = playerEngineHolder.releasePlayer()
+    override fun releasePlayer() {
+        stopVideoPlayback(restoreMusic = false, updateNotification = false)
+        playerEngineHolder.releasePlayer()
+    }
     override fun releaseAllCacheListeners() = this.unregisterAllCacheListeners()
     override fun cancelScopeJob() = scopeJob.cancel()
     override fun isTogetherHostSessionActive(): Boolean = configCollector.isTogetherHostSessionActive()
