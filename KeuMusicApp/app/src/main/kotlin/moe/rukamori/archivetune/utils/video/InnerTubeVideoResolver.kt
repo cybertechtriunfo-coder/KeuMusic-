@@ -10,6 +10,7 @@ import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YouTubeClient
 import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.WEB_REMIX
+import moe.rukamori.archivetune.innertube.models.YouTubeClient.Companion.VISIONOS
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.utils.resolver.PlaybackStreamUrlDecipher
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
@@ -57,6 +58,12 @@ internal object InnerTubeVideoResolver {
         val clientOrder = PlaybackClientSelector
             .buildStreamClientOrder(PlayerStreamClient.ANDROID_VR, authState)
             .filterNot { it == WEB_REMIX }
+            .let { clients ->
+                // The selector puts VISIONOS first by default. For video extraction,
+                // prefer the last successful client (when available) and the configured
+                // playback client before spending time on that generic fallback.
+                clients.filterNot { it == VISIONOS } + clients.filter { it == VISIONOS }
+            }
             .let { fallback ->
                 if (hasWebTokens) listOf(WEB_REMIX) + fallback else fallback
             }
