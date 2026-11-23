@@ -59,6 +59,7 @@ import androidx.media3.datasource.cache.Cache
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.analytics.PlaybackStats
 import androidx.media3.exoplayer.analytics.PlaybackStatsListener
@@ -704,10 +705,11 @@ class MusicService :
         val previousCrossfade = crossfadeEnabled
         val previousAutomix = automixEnabled
         val previousSuppressAutoPlayback = suppressAutoPlayback
-        val videoFilter = DjFilterAudioProcessor()
+        // Keep video decoding independent from the music player's custom DSP chain.
+        // Decoder fallback also lets Media3 try another compatible decoder when available.
         val videoPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(createMediaSourceFactory())
-            .setRenderersFactory(createRenderersFactory(videoFilter))
+            .setRenderersFactory(DefaultRenderersFactory(this).setEnableDecoderFallback(true))
             .setLoadControl(createPrimaryLoadControl())
             .setTrackSelector(DefaultTrackSelector(this, SafeTrackSelectionFactory()))
             .setHandleAudioBecomingNoisy(false)
@@ -735,7 +737,6 @@ class MusicService :
             metadataBeforeVideo = previousMetadata
             returnPlayer.pause()
 
-            djFilterByPlayer[videoPlayer] = videoFilter
             activeVideoPlayerInternal = videoPlayer
 
             // Keep the existing MediaSession delegate so notification and lock-screen controls remain intact.
@@ -758,8 +759,6 @@ class MusicService :
             runCatching { videoPlayer.clearVideoSurface() }.onFailure { reportException(it) }
             runCatching { videoPlayer.clearMediaItems() }.onFailure { reportException(it) }
             runCatching { videoPlayer.release() }.onFailure { reportException(it) }
-            djFilterByPlayer.remove(videoPlayer)
-
             currentMediaMetadata.value = previousMetadata
             playerBeforeVideo = null
             metadataBeforeVideo = null
@@ -796,7 +795,6 @@ class MusicService :
         runCatching { returnPlayer.addListener(playerListeners.audioEffectPlayerListener) }
             .onFailure { reportException(it) }
 
-        djFilterByPlayer.remove(videoPlayer)
         runCatching { videoPlayer.clearVideoSurface() }.onFailure { reportException(it) }
         runCatching { videoPlayer.clearMediaItems() }.onFailure { reportException(it) }
         runCatching { videoPlayer.release() }.onFailure { reportException(it) }
