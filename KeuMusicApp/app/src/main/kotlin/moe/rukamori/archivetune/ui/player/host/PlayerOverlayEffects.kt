@@ -62,11 +62,22 @@ internal fun PlayerOverlayEffects(
                         launchSingleTop = true
                     }
                 }
-                PlayerEvent.ExpandPlayer -> {
-                    if (!sheetState.isExpandedOrExpanding) {
-                        sheetState.expandSoft()
-                    }
-                }
+            }
+        }
+    }
+
+    LaunchedEffect(playerConnection, navController) {
+        playerConnection?.videoNavigationRequests?.collect { videoId ->
+            navController.navigate("youtube_video/$videoId") {
+                launchSingleTop = true
+            }
+        }
+    }
+
+    LaunchedEffect(playerConnection, sheetState) {
+        playerConnection?.expandPlayerRequests?.collect {
+            if (!sheetState.isExpandedOrExpanding) {
+                sheetState.expandSoft()
             }
         }
     }

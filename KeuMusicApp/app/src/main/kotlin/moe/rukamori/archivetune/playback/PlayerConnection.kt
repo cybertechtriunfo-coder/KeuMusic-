@@ -26,6 +26,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.common.C
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -47,6 +48,9 @@ import moe.rukamori.archivetune.playback.resolvers.formatForSource
 import moe.rukamori.archivetune.playback.resolvers.getFormatForSource
 import moe.rukamori.archivetune.playback.together.requestTogetherControl
 import moe.rukamori.archivetune.playback.queues.Queue
+import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.spotify.SpotifyPlaceholders
 import moe.rukamori.archivetune.utils.LikeSourceResolver
 import moe.rukamori.archivetune.utils.reportException
@@ -136,6 +140,90 @@ class PlayerConnection(
     val error = MutableStateFlow<PlaybackException?>(null)
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
+
+    // Shared video navigation state lives on PlayerConnection so the navigation
+    // destination and the persistent player overlay use the same queue instance.
+    val videoNavigationRequests = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val expandPlayerRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val videoHistory = mutableListOf<String>()
+    private var videoHistoryIndex = -1
+    private var videoNextEndpoint: WatchEndpoint? = null
+    private var videoNextContinuation: String? = null
+
+    fun registerVideoPlayback(videoId: String) {
+        synchronized(videoHistory) {
+            val existingIndex = videoHistory.indexOf(videoId)
+            if (existingIndex >= 0) {
+                videoHistoryIndex = existingIndex
+                return
+            }
+            if (videoHistoryIndex in 0 until videoHistory.lastIndex) {
+                videoHistory.subList(videoHistoryIndex + 1, videoHistory.size).clear()
+            }
+            videoHistory.add(videoId)
+            videoHistoryIndex = videoHistory.lastIndex
+            videoNextEndpoint = WatchEndpoint(videoId = videoId)
+            videoNextContinuation = null
+        }
+    }
+
+    fun requestPlayerExpand() {
+        expandPlayerRequests.tryEmit(Unit)
+    }
+
+    fun playPreviousVideo() {
+        val previousId = synchronized(videoHistory) {
+            if (videoHistoryIndex <= 0) null
+            else videoHistory[--videoHistoryIndex]
+        } ?: return
+        videoNavigationRequests.tryEmit(previousId)
+    }
+
+    fun playNextVideo() {
+        val immediateNextId = synchronized(videoHistory) {
+            if (videoHistoryIndex in 0 until videoHistory.lastIndex) {
+                videoHistory[++videoHistoryIndex]
+            } else {
+                null
+            }
+        }
+        if (immediateNextId != null) {
+            videoNavigationRequests.tryEmit(immediateNextId)
+            return
+        }
+
+        val currentVideoId = synchronized(videoHistory) {
+            videoHistory.getOrNull(videoHistoryIndex)
+        } ?: service.activeVideoPlayer?.currentMediaItem?.mediaId ?: return
+
+        scope.launch {
+            try {
+                val result = YouTube.next(
+                    endpoint = synchronized(videoHistory) {
+                        videoNextEndpoint ?: WatchEndpoint(videoId = currentVideoId)
+                    },
+                    continuation = synchronized(videoHistory) { videoNextContinuation },
+                    followAutomixPreview = false,
+                ).getOrThrow()
+
+                val nextVideoId = synchronized(videoHistory) {
+                    videoNextEndpoint = result.endpoint
+                    videoNextContinuation = result.continuation
+                    result.items
+                        .filterIsInstance<SongItem>()
+                        .firstOrNull { it.id.isNotBlank() && it.id !in videoHistory }
+                        ?.id
+                        ?.also {
+                            videoHistory.add(it)
+                            videoHistoryIndex = videoHistory.lastIndex
+                        }
+                }
+                if (nextVideoId != null) videoNavigationRequests.emit(nextVideoId)
+            } catch (error: Exception) {
+                android.util.Log.w("KeuMusicVideo", "Não foi possível carregar o próximo vídeo", error)
+            }
+        }
+    }
 
     init {
         player.addListener(this)

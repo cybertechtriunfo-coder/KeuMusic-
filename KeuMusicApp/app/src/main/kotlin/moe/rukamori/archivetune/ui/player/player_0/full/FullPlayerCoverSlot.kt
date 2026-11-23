@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,10 +83,17 @@ internal fun FullPlayerCoverSlot(
     val trackSwitchScale = remember { Animatable(1f) }
     val coroutineScope = rememberCoroutineScope()
     var manualFullscreen by remember(videoPlayer) { mutableStateOf(false) }
+    var landscapeFullscreenDismissed by remember(videoPlayer) { mutableStateOf(false) }
     val orientation = LocalConfiguration.current.orientation
+    LaunchedEffect(orientation) {
+        if (orientation != Configuration.ORIENTATION_LANDSCAPE) {
+            landscapeFullscreenDismissed = false
+            manualFullscreen = false
+        }
+    }
     val activeVideo = videoPlayer?.takeIf { it.currentMediaItem?.mediaId == state.trackUrl }
     val showVideoFullscreen = activeVideo != null &&
-        (manualFullscreen || orientation == Configuration.ORIENTATION_LANDSCAPE)
+        (manualFullscreen || (orientation == Configuration.ORIENTATION_LANDSCAPE && !landscapeFullscreenDismissed))
 
     val isCoverGlowEnabled by remember(
         state.isAlbumCoverGlowEnabled,
@@ -209,7 +217,12 @@ internal fun FullPlayerCoverSlot(
 
     if (showVideoFullscreen && activeVideo != null) {
         Dialog(
-            onDismissRequest = { manualFullscreen = false },
+            onDismissRequest = {
+                manualFullscreen = false
+                if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                    landscapeFullscreenDismissed = true
+                }
+            },
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -226,7 +239,12 @@ internal fun FullPlayerCoverSlot(
                     modifier = Modifier.fillMaxSize(),
                 )
                 IconButton(
-                    onClick = { manualFullscreen = false },
+                    onClick = {
+                        manualFullscreen = false
+                        if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                            landscapeFullscreenDismissed = true
+                        }
+                    },
                     modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).size(44.dp),
                 ) { Text("✕", color = Color.White) }
                 IconButton(
