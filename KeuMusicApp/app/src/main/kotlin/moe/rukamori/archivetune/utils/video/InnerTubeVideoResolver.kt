@@ -5,6 +5,7 @@
 package moe.rukamori.archivetune.utils.video
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.innertube.PlaybackAuthState
 import moe.rukamori.archivetune.innertube.YouTube
@@ -19,6 +20,9 @@ import moe.rukamori.archivetune.utils.resolver.PlaybackClientSelector
 import timber.log.Timber
 
 internal object InnerTubeVideoResolver {
+    private const val CLIENT_REQUEST_TIMEOUT_MS = 6_000L
+    private const val MAX_CLIENT_ATTEMPTS = 7
+
     enum class SourceType {
         PROGRESSIVE,
         MERGED,
@@ -68,7 +72,7 @@ internal object InnerTubeVideoResolver {
                 if (hasWebTokens) listOf(WEB_REMIX) + fallback else fallback
             }
 
-        for (client in clientOrder) {
+        for (client in clientOrder.take(MAX_CLIENT_ATTEMPTS)) {
             val resolved = tryClient(
                 videoId = videoId,
                 client = client,
@@ -123,20 +127,33 @@ internal object InnerTubeVideoResolver {
         signatureTimestamp: Int?,
         preferredMaxHeight: Int,
     ): ResolvedVideoStream? {
-        val response = try {
-            YouTube.player(
-                videoId = videoId,
-                client = client,
-                signatureTimestamp = signatureTimestamp,
-                setLogin = authState.hasPlaybackLoginContext,
-                authState = authState,
-            ).getOrNull()
+        val result = try {
+            withTimeoutOrNull(CLIENT_REQUEST_TIMEOUT_MS) {
+                YouTube.player(
+                    videoId = videoId,
+                    client = client,
+                    signatureTimestamp = signatureTimestamp,
+                    setLogin = authState.hasPlaybackLoginContext,
+                    authState = authState,
+                )
+            }
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Exception) {
             Timber.tag("KeuMusicVideo").w(error, "Player request failed for client ${client.clientName}")
             null
-        } ?: return null
+        }
+
+        if (result == null) {
+            Timber.tag("KeuMusicVideo").w("Player request timed out for client ${client.clientName}")
+            return null
+        }
+
+        val response = result.getOrElse { error ->
+            if (error is CancellationException) throw error
+            Timber.tag("KeuMusicVideo").w(error, "Player request returned an error for client ${client.clientName}")
+            return null
+        }
 
         if (response.playabilityStatus.status != "OK") {
             Timber.tag("KeuMusicVideo").w(

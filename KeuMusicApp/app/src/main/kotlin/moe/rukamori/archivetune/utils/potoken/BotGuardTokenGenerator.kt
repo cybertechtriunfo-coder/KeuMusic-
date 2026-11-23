@@ -22,6 +22,8 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -136,6 +138,7 @@ object BotGuardTokenGenerator {
             }
             Timber.tag(TAG).d("Pre-warm complete")
         } catch (timeout: TimeoutCancellationException) {
+            currentCoroutineContext().ensureActive()
             Timber.tag(TAG).w("Pre-warm timed out after ${COLD_START_TIMEOUT_MS}ms")
         } catch (cancellation: CancellationException) {
             throw cancellation
@@ -195,6 +198,7 @@ object BotGuardTokenGenerator {
                 result
             }
         } catch (e: TimeoutCancellationException) {
+            currentCoroutineContext().ensureActive()
             Timber.tag(TAG).w("Timed out after ${timeout}ms — proceeding without PoToken")
             mutex.withLock { destroyEngine() }
             null
@@ -274,9 +278,11 @@ object BotGuardTokenGenerator {
         val playerTok =
             try {
                 eng.mint(videoId)
-            } catch (e: Throwable) {
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (e: Exception) {
                 if (wasNew) throw e
-                Timber.tag(TAG).w(e, "mint failed, retrying with fresh engine")
+                Timber.tag(TAG).w(e, "mint failed, retrying once with fresh engine")
                 return mintTokenInternal(ctx, videoId, sessionId, forceNewEngine = true)
             }
 
@@ -544,17 +550,17 @@ object BotGuardTokenGenerator {
                             ).toHeaders(),
                         ).build()
 
-                val response =
+                val body =
                     withContext(Dispatchers.IO) {
-                        httpClient.newCall(request).execute()
+                        httpClient.newCall(request).execute().use { response ->
+                            if (!response.isSuccessful) {
+                                throw PoTokenException("BotGuard HTTP ${response.code} from $url")
+                            }
+                            response.body?.string()
+                                ?: throw PoTokenException("BotGuard returned an empty response from $url")
+                        }
                     }
-
-                if (response.code != 200) {
-                    signalError(PoTokenException("BotGuard HTTP ${response.code} from $url"))
-                } else {
-                    val body = withContext(Dispatchers.IO) { response.body!!.string() }
-                    onSuccess(body)
-                }
+                onSuccess(body)
             }
         }
 

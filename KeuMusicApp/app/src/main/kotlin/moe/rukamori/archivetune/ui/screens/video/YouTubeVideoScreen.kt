@@ -148,8 +148,9 @@ fun YouTubeVideoScreen(videoId: String) {
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (e: Exception) {
-            Log.e("KeuMusicVideo", "Falha ao iniciar vídeo", e)
-            status.value = "Não foi possível reproduzir este vídeo: " + (e.message ?: "falha na extração")
+            Log.e("KeuMusicVideo", "Falha ao iniciar vídeo $validId", e)
+            val detail = e.message?.takeIf { it.isNotBlank() } ?: "falha na extração. Tente novamente."
+            status.value = "Não foi possível reproduzir este vídeo: $detail"
         }
     }
 

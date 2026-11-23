@@ -696,20 +696,14 @@ class MusicService :
         }
 
         check(isControllerInitialized) { "O serviço de música ainda não terminou de inicializar." }
-        crossfadeEnabledBeforeVideo = crossfadeEnabled
-        automixEnabledBeforeVideo = automixEnabled
-        suppressAutoPlaybackBeforeVideo = suppressAutoPlayback
-        crossfadeEnabled = false
-        automixEnabled = false
-        suppressAutoPlayback = true
-        controller.cancel()
 
+        // Build first: a decoder/player construction failure must not interrupt music playback.
         val returnPlayer = playerEngineHolder.activeDeck.player
-        playerBeforeVideo = returnPlayer
-        wasPlayingBeforeVideo = returnPlayer.isPlaying
-        metadataBeforeVideo = currentMediaMetadata.value
-        returnPlayer.pause()
-
+        val wasPlaying = returnPlayer.isPlaying
+        val previousMetadata = currentMediaMetadata.value
+        val previousCrossfade = crossfadeEnabled
+        val previousAutomix = automixEnabled
+        val previousSuppressAutoPlayback = suppressAutoPlayback
         val videoFilter = DjFilterAudioProcessor()
         val videoPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(createMediaSourceFactory())
@@ -726,22 +720,63 @@ class MusicService :
                 addAnalyticsListener(PlaybackStatsListener(false, playerListeners))
                 setOffloadEnabled(false)
             }
-        djFilterByPlayer[videoPlayer] = videoFilter
-        activeVideoPlayerInternal = videoPlayer
 
-        // The same forwarding player is exposed by the existing MediaLibrarySession.
-        // Swapping its delegate keeps notification, lock-screen and headset controls.
-        playerEngineHolder.dualForwardingPlayer.attachPlayer(videoPlayer)
-        transferAudioEffects(videoPlayer)
-        currentMediaMetadata.value = metadata
+        try {
+            crossfadeEnabledBeforeVideo = previousCrossfade
+            automixEnabledBeforeVideo = previousAutomix
+            suppressAutoPlaybackBeforeVideo = previousSuppressAutoPlayback
+            crossfadeEnabled = false
+            automixEnabled = false
+            suppressAutoPlayback = true
+            controller.cancel()
 
-        ensureStartedAsForeground()
-        promoteToStartedService()
-        videoPlayer.setMediaSource(mediaSource)
-        videoPlayer.prepare()
-        videoPlayer.playWhenReady = true
-        refreshPlaybackNotification()
-        return videoPlayer
+            playerBeforeVideo = returnPlayer
+            wasPlayingBeforeVideo = wasPlaying
+            metadataBeforeVideo = previousMetadata
+            returnPlayer.pause()
+
+            djFilterByPlayer[videoPlayer] = videoFilter
+            activeVideoPlayerInternal = videoPlayer
+
+            // Keep the existing MediaSession delegate so notification and lock-screen controls remain intact.
+            playerEngineHolder.dualForwardingPlayer.attachPlayer(videoPlayer)
+            transferAudioEffects(videoPlayer)
+            currentMediaMetadata.value = metadata
+
+            ensureStartedAsForeground()
+            promoteToStartedService()
+            videoPlayer.setMediaSource(mediaSource)
+            videoPlayer.prepare()
+            videoPlayer.playWhenReady = true
+            refreshPlaybackNotification()
+            return videoPlayer
+        } catch (error: Throwable) {
+            activeVideoPlayerInternal = null
+            runCatching {
+                playerEngineHolder.dualForwardingPlayer.attachPlayer(returnPlayer)
+            }.onFailure { reportException(it) }
+            runCatching { videoPlayer.clearVideoSurface() }.onFailure { reportException(it) }
+            runCatching { videoPlayer.clearMediaItems() }.onFailure { reportException(it) }
+            runCatching { videoPlayer.release() }.onFailure { reportException(it) }
+            djFilterByPlayer.remove(videoPlayer)
+
+            currentMediaMetadata.value = previousMetadata
+            playerBeforeVideo = null
+            metadataBeforeVideo = null
+            wasPlayingBeforeVideo = false
+            crossfadeEnabled = previousCrossfade
+            automixEnabled = previousAutomix
+            suppressAutoPlayback = previousSuppressAutoPlayback
+            crossfadeEnabledBeforeVideo = false
+            automixEnabledBeforeVideo = false
+            suppressAutoPlaybackBeforeVideo = false
+
+            if (wasPlaying) {
+                runCatching { returnPlayer.play() }.onFailure { reportException(it) }
+            }
+            runCatching { refreshPlaybackNotification() }.onFailure { reportException(it) }
+            throw error
+        }
     }
 
     fun stopVideoPlayback(restoreMusic: Boolean = false, updateNotification: Boolean = true) {
@@ -749,16 +784,22 @@ class MusicService :
         activeVideoPlayerInternal = null
 
         val returnPlayer = playerBeforeVideo ?: playerEngineHolder.activeDeck.player
-        videoPlayer.playWhenReady = false
-        videoPlayer.pause()
-        videoPlayer.removeListener(playerListeners.audioEffectPlayerListener)
-        playerEngineHolder.dualForwardingPlayer.attachPlayer(returnPlayer)
-        returnPlayer.addListener(playerListeners.audioEffectPlayerListener)
+        val resumeMusic = restoreMusic && wasPlayingBeforeVideo
+
+        // Cleanup is best-effort, but state restoration must always run even if a player call fails.
+        runCatching { videoPlayer.playWhenReady = false }.onFailure { reportException(it) }
+        runCatching { videoPlayer.pause() }.onFailure { reportException(it) }
+        runCatching { videoPlayer.removeListener(playerListeners.audioEffectPlayerListener) }
+            .onFailure { reportException(it) }
+        runCatching { playerEngineHolder.dualForwardingPlayer.attachPlayer(returnPlayer) }
+            .onFailure { reportException(it) }
+        runCatching { returnPlayer.addListener(playerListeners.audioEffectPlayerListener) }
+            .onFailure { reportException(it) }
 
         djFilterByPlayer.remove(videoPlayer)
-        runCatching { videoPlayer.clearVideoSurface() }
-        runCatching { videoPlayer.clearMediaItems() }
-        videoPlayer.release()
+        runCatching { videoPlayer.clearVideoSurface() }.onFailure { reportException(it) }
+        runCatching { videoPlayer.clearMediaItems() }.onFailure { reportException(it) }
+        runCatching { videoPlayer.release() }.onFailure { reportException(it) }
 
         currentMediaMetadata.value = metadataBeforeVideo
         playerBeforeVideo = null
@@ -769,13 +810,15 @@ class MusicService :
         crossfadeEnabledBeforeVideo = false
         automixEnabledBeforeVideo = false
         suppressAutoPlaybackBeforeVideo = false
-        val resumeMusic = restoreMusic && wasPlayingBeforeVideo
         wasPlayingBeforeVideo = false
+
         if (resumeMusic) {
-            returnPlayer.play()
+            runCatching { returnPlayer.play() }.onFailure { reportException(it) }
             scheduleCrossfade()
         }
-        if (updateNotification) refreshPlaybackNotification()
+        if (updateNotification) {
+            runCatching { refreshPlaybackNotification() }.onFailure { reportException(it) }
+        }
     }
 
     fun playQueue(queue: Queue, playWhenReady: Boolean = true) {
