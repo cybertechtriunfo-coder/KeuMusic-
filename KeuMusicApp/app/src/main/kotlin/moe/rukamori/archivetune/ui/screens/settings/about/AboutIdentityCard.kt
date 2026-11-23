@@ -169,10 +169,6 @@ internal fun AboutIdentityCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     AboutMetadataBadge(text = model.versionName)
-                    model.buildHash?.let { buildHash ->
-                        AboutMetadataBadge(text = buildHash)
-                    }
-                    AboutMetadataBadge(text = model.buildVariant)
                 }
             }
 
