@@ -175,7 +175,13 @@ class PlayerConnection(
         val previousId = synchronized(videoHistory) {
             if (videoHistoryIndex <= 0) null
             else videoHistory[--videoHistoryIndex]
-        } ?: return
+        }
+        if (previousId == null) {
+            // Match common player behavior: when there is no previous video in
+            // the in-memory history, restart the current video instead of doing nothing.
+            service.activeVideoPlayer?.seekTo(0L)
+            return
+        }
         videoNavigationRequests.tryEmit(previousId)
     }
 
@@ -203,7 +209,7 @@ class PlayerConnection(
                         videoNextEndpoint ?: WatchEndpoint(videoId = currentVideoId)
                     },
                     continuation = synchronized(videoHistory) { videoNextContinuation },
-                    followAutomixPreview = false,
+                    followAutomixPreview = true,
                 ).getOrThrow()
 
                 val nextVideoId = synchronized(videoHistory) {
