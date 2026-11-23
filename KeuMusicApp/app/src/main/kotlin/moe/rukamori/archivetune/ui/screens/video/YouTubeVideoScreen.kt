@@ -33,7 +33,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.dash.DashMediaSource
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.PlayerView
@@ -42,7 +43,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.models.MediaMetadata as KeuMediaMetadata
 import moe.rukamori.archivetune.ui.PlayerViewModel
-import moe.rukamori.archivetune.utils.video.InnerTubeVideoResolver
+import moe.rukamori.archivetune.utils.video.NewPipeVideoDownloader
+import moe.rukamori.archivetune.utils.video.NewPipeVideoResolver
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -74,15 +76,15 @@ fun YouTubeVideoScreen(videoId: String) {
 
         try {
             val stream = withContext(Dispatchers.IO) {
-                InnerTubeVideoResolver.resolve(
+                NewPipeVideoResolver.resolve(
                     videoId = validId,
                     preferredMaxHeight = 720,
                 )
             }
 
             val httpFactory = DefaultHttpDataSource.Factory()
-                .setUserAgent(stream.requestHeaders["User-Agent"].orEmpty())
-                .setDefaultRequestProperties(stream.requestHeaders)
+                .setUserAgent(NewPipeVideoDownloader.USER_AGENT)
+                .setAllowCrossProtocolRedirects(true)
 
             val keuMetadata = KeuMediaMetadata(
                 id = stream.id,
@@ -108,7 +110,7 @@ fun YouTubeVideoScreen(videoId: String) {
                 .build()
 
             val mediaSource = when (stream.sourceType) {
-                InnerTubeVideoResolver.SourceType.MERGED -> {
+                NewPipeVideoResolver.SourceType.MERGED -> {
                     val audioUrl = stream.audioUrl
                         ?: error("O extrator não retornou a faixa de áudio.")
                     val audioMimeType = stream.audioMimeType ?: "audio/mp4"
@@ -125,10 +127,17 @@ fun YouTubeVideoScreen(videoId: String) {
                     MergingMediaSource(videoSource, audioSource)
                 }
 
-                InnerTubeVideoResolver.SourceType.PROGRESSIVE ->
+                NewPipeVideoResolver.SourceType.PROGRESSIVE ->
                     ProgressiveMediaSource.Factory(httpFactory)
                         .createMediaSource(videoItem)
 
+                NewPipeVideoResolver.SourceType.HLS ->
+                    HlsMediaSource.Factory(httpFactory)
+                        .createMediaSource(videoItem)
+
+                NewPipeVideoResolver.SourceType.DASH ->
+                    DashMediaSource.Factory(httpFactory)
+                        .createMediaSource(videoItem)
             }
 
             // MusicService owns this player and exposes it through the same
@@ -140,7 +149,7 @@ fun YouTubeVideoScreen(videoId: String) {
             status.value = ""
             Log.i(
                 "KeuMusicVideo",
-                "Vídeo iniciado na sessão principal: client=" + stream.clientName +
+                "Vídeo iniciado na sessão principal: extractor=NewPipe" +
                     ", source=" + stream.sourceType +
                     ", altura=" + stream.selectedHeight +
                     ", áudioSeparado=" + (stream.audioUrl != null),
