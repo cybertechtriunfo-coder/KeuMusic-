@@ -111,6 +111,7 @@ class MusicServiceLifecycle(
     interface Delegate {
         val dataStore: DataStore<Preferences>
         val player: Player
+        val activeVideoPlayer: ExoPlayer?
         val localPlayer: ExoPlayer
         val secondaryCrossfadePlayer: ExoPlayer?
         val serviceBinder: IBinder
@@ -776,9 +777,14 @@ class MusicServiceLifecycle(
             val isHostSessionActive = delegate.isTogetherHostSessionActive()
             val player = delegate.player
             val isPlaybackInactive = player.playbackState == Player.STATE_IDLE || player.mediaItemCount == 0
+            val isVideoPlaybackActive = delegate.activeVideoPlayer?.let { videoPlayer ->
+                videoPlayer.playWhenReady &&
+                    videoPlayer.playbackState != Player.STATE_IDLE &&
+                    videoPlayer.mediaItemCount > 0
+            } == true
 
             if (PlaybackConstants.shouldStopServiceOnTaskRemoved(stopMusicOnTaskClearEnabled, isHostSessionActive, isPlaybackInactive)) {
-                if (stopMusicOnTaskClearEnabled) {
+                if (stopMusicOnTaskClearEnabled && !isVideoPlaybackActive) {
                     delegate.setDiscordServiceStopping(true)
                     delegate.dispatchDiscordSync(
                         reason = "task_removed_stop_music_on_task_clear",

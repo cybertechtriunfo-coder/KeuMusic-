@@ -252,8 +252,19 @@ internal class InnerTubeHttp {
 
     suspend fun HttpResponse.ensureNoInnertubeError(action: String): HttpResponse {
         val rawBody = bodyAsText()
+        val contentType = headers[HttpHeaders.ContentType].orEmpty()
+        val looksLikeHtml =
+            contentType.contains("text/html", ignoreCase = true) ||
+                rawBody.trimStart().startsWith("<!doctype html", ignoreCase = true) ||
+                rawBody.trimStart().startsWith("<html", ignoreCase = true)
+
+        if (looksLikeHtml) {
+            throw IOException(
+                "InnerTube " + action + " returned HTML instead of JSON (HTTP " + status.value + ").",
+            )
+        }
         if (rawBody.contains("\"error\"")) {
-            throw IOException("InnerTube $action refused by server: ${rawBody.take(300)}")
+            throw IOException("InnerTube " + action + " refused by server: " + rawBody.take(300))
         }
         return this
     }

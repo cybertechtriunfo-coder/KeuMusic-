@@ -248,7 +248,7 @@ class MusicService :
     private var automixEnabledBeforeVideo = false
     private var suppressAutoPlaybackBeforeVideo = false
 
-    val activeVideoPlayer: ExoPlayer? get() = activeVideoPlayerInternal
+    override val activeVideoPlayer: ExoPlayer? get() = activeVideoPlayerInternal
 
     override lateinit var connectivityManager: ConnectivityManager
     override lateinit var connectivityObserver: NetworkConnectivityObserver

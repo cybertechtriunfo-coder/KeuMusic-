@@ -84,9 +84,34 @@ private class NewPipeDownloaderImpl(
             throw ReCaptchaException("reCaptcha Challenge requested", url)
         }
 
-        val responseBodyToReturn = response.body.string()
-        val latestUrl = response.request.url.toString()
-        return Response(response.code, response.message, response.headers.toMultimap(), responseBodyToReturn, latestUrl)
+        response.use { httpResponse ->
+            val responseBodyToReturn = httpResponse.body.string()
+            val latestUrl = httpResponse.request.url.toString()
+            val contentType = httpResponse.header("Content-Type").orEmpty()
+            val isYouTubeApi = latestUrl.contains("youtubei", ignoreCase = true)
+            val looksLikeHtml =
+                contentType.contains("text/html", ignoreCase = true) ||
+                    responseBodyToReturn.trimStart().startsWith("<!doctype html", ignoreCase = true) ||
+                    responseBodyToReturn.trimStart().startsWith("<html", ignoreCase = true)
+
+            if (isYouTubeApi && looksLikeHtml) {
+                val reason =
+                    when (httpResponse.code) {
+                        403 -> "YouTube recusou a solicitação (HTTP 403)."
+                        429 -> "YouTube limitou temporariamente as solicitações (HTTP 429)."
+                        else -> "YouTube retornou HTML em vez de JSON (HTTP " + httpResponse.code + ")."
+                    }
+                throw IOException(reason + " Endpoint: " + latestUrl)
+            }
+
+            return Response(
+                httpResponse.code,
+                httpResponse.message,
+                httpResponse.headers.toMultimap(),
+                responseBodyToReturn,
+                latestUrl,
+            )
+        }
     }
 }
 
