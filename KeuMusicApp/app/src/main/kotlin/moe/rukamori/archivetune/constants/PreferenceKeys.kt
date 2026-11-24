@@ -214,6 +214,7 @@ val AiApiKeyKey = stringPreferencesKey("ai_api_key")
 val AiApiValidationStatusKey = stringPreferencesKey("ai_api_validation_status")
 val AiSelectedModelKey = stringPreferencesKey("ai_selected_model")
 val AiCustomModelKey = stringPreferencesKey("ai_custom_model")
+val KeuMusicAiEnabledKey = booleanPreferencesKey("keumusic_ai_enabled")
 
 enum class AiProvider {
     CHATGPT,
