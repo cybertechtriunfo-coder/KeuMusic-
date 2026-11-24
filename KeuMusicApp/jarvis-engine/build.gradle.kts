@@ -17,7 +17,7 @@ android {
             kotlin.srcDir("../third_party/jarvis-source/app/src/main/java")
             java.srcDir("../third_party/jarvis-source/app/src/main/java")
             // Compile the locally adapted Kotlin 2.4-compatible MemoryStore overlay instead.
-            kotlin.exclude("**/memory/MemoryStore.kt")
+            kotlin.filter.exclude("**/memory/MemoryStore.kt")
             kotlin.srcDir("src/main/kotlin")
             res.srcDir("../third_party/jarvis-source/app/src/main/res")
             assets.srcDir("../third_party/jarvis-source/app/src/main/assets")
