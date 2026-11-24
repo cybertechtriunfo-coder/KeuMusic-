@@ -17,12 +17,18 @@ android {
             java.srcDir("../third_party/jarvis-source/app/src/main/java")
             res.srcDir("../third_party/jarvis-source/app/src/main/res")
             assets.srcDir("../third_party/jarvis-source/app/src/main/assets")
+        getByName("test").java.srcDir("../third_party/jarvis-source/app/src/test/java")
             manifest.srcFile("src/main/AndroidManifest.xml")
         }
     }
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
+    }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
 
     compileOptions {
@@ -45,6 +51,11 @@ dependencies {
 
     // Reuse the exact, SHA-256-pinned sherpa-onnx AAR already downloaded by the KeuMusic app.
     implementation(files(rootProject.file("app/libs/sherpa-onnx-1.13.8.aar")))
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
 
 tasks.configureEach {
