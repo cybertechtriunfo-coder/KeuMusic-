@@ -7,6 +7,7 @@ on:
       - feature/keumusic-video-player-20261123
       - feature/video-autoplay-queue-20261124
       - keumusic-oficial-1.0
+      - feature/keumusic-ai-lab-20261124
   workflow_dispatch:
 
 permissions:
