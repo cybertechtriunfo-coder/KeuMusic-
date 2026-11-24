@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.net.URI
+import java.security.MessageDigest
 import java.util.Properties
 
 plugins {
@@ -281,6 +283,30 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+val sherpaVersion = "1.13.8"
+val sherpaAar = file("libs/sherpa-onnx-$sherpaVersion.aar")
+val sherpaSha256 = "633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96"
+
+val fetchSherpaOnnx by tasks.registering {
+    description = "Downloads the pinned sherpa-onnx Android runtime used by the KeuMusic AI voice engine."
+    outputs.file(sherpaAar)
+    onlyIf { !sherpaAar.exists() }
+    doLast {
+        val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/sherpa-onnx-$sherpaVersion.aar"
+        logger.lifecycle("Downloading $url")
+        val part = File(sherpaAar.path + ".part")
+        sherpaAar.parentFile.mkdirs()
+        URI(url).toURL().openStream().use { input -> part.outputStream().use { input.copyTo(it) } }
+        val digest = MessageDigest.getInstance("SHA-256").digest(part.readBytes())
+            .joinToString("") { "%02x".format(it) }
+        if (digest != sherpaSha256) {
+            part.delete()
+            throw GradleException("sherpa-onnx download is corrupt (sha256 $digest)")
+        }
+        if (!part.renameTo(sherpaAar)) throw GradleException("Could not install sherpa-onnx AAR")
+    }
+}
+
 dependencies {
     implementation(libs.media3.ui)
 
@@ -449,4 +475,6 @@ configurations.configureEach {
         "androidx.compose.animation:animation-graphics:${libs.versions.compose.get()}",
         "org.jetbrains.kotlin:kotlin-metadata-jvm:${libs.versions.kotlinMetadata.get()}",
     )
+    // Jarvis-derived offline wake-word and microphone engine (MIT; see THIRD_PARTY_LICENSES).
+    implementation(files(sherpaAar).builtBy(fetchSherpaOnnx))
 }
