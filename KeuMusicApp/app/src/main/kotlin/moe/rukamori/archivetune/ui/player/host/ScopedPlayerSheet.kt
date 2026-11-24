@@ -1,7 +1,9 @@
 package moe.rukamori.archivetune.ui.player.host
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -9,6 +11,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.Player
 import androidx.navigation.NavController
 import dev.chrisbanes.haze.HazeState
 import moe.rukamori.archivetune.playback.PlayerConnection
@@ -52,14 +55,37 @@ internal fun ScopedPlayerSheet(
     val activeVideoPlayer = playerConnection?.service?.activeVideoPlayer
         ?.takeIf { it.currentMediaItem?.mediaId == currentMetadata?.id }
 
+    var videoIsPlaying by remember(activeVideoPlayer) {
+        mutableStateOf(activeVideoPlayer?.isPlaying ?: uiState.isPlaying)
+    }
+
+    DisposableEffect(activeVideoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                videoIsPlaying = isPlaying
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                videoIsPlaying = activeVideoPlayer?.isPlaying == true
+            }
+        }
+        activeVideoPlayer?.addListener(listener)
+        onDispose { activeVideoPlayer?.removeListener(listener) }
+    }
+
     UnifiedPlayerSheetV2(
-        state = uiState,
+        state = if (activeVideoPlayer != null) uiState.copy(isPlaying = videoIsPlaying) else uiState,
         queueState = queueState,
         playbackProgress = playerViewModel.playbackProgress,
         videoPlayer = activeVideoPlayer,
         onCloseVideo = { playerViewModel.stopVideoPlayback() },
         onAction = { action ->
             when (action) {
+                is PlayerAction.PlayPause -> {
+                    activeVideoPlayer?.let { video ->
+                        if (video.isPlaying || video.playWhenReady) video.pause() else video.play()
+                    } ?: playerViewModel.handleAction(action)
+                }
                 is PlayerAction.Next, is PlayerAction.SkipNext -> {
                     val connection = playerConnection
                     if (connection?.service?.activeVideoPlayer != null) {
@@ -103,7 +129,9 @@ internal fun ScopedPlayerSheet(
         onOpenQueue = { playerViewModel.setQueueVisible(true) },
         onCloseQueueClick = { playerViewModel.setQueueVisible(false) },
         onSearchLyricsClick = { playerViewModel.fetchLyrics() },
-        onSeek = { position -> playerViewModel.seekTo(position.toLong()) },
+        onSeek = { position ->
+            activeVideoPlayer?.seekTo(position.toLong()) ?: playerViewModel.seekTo(position.toLong())
+        },
         onSeekStarted = { playerViewModel.onSeekStarted() },
         onBackgroundStyleChanged = { playerViewModel.setBlurBackgroundEnabled(it) },
         onImmersiveChanged = { playerViewModel.setImmersiveEnabled(it) },
