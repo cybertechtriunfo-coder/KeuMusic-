@@ -1,0 +1,4 @@
+[submodule "KeuMusicApp/third_party/jarvis-source"]
+	path = KeuMusicApp/third_party/jarvis-source
+	url = https://github.com/judejulius/jarvis.git
+	branch = master
