@@ -98,6 +98,9 @@ import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
 import moe.rukamori.archivetune.constants.AiCustomEndpointKey
 import moe.rukamori.archivetune.constants.AiCustomModelKey
 import moe.rukamori.archivetune.constants.KeuMusicAiEnabledKey
+import moe.rukamori.archivetune.constants.KeuMusicAiDjModeKey
+import moe.rukamori.archivetune.constants.KeuMusicAiVoiceDuckingKey
+import moe.rukamori.archivetune.constants.KeuMusicAiDjFrequencyKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
