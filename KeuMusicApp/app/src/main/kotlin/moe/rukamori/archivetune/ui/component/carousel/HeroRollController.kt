@@ -82,8 +82,8 @@ internal class HeroRollController(
         }
     }
 
-    fun roll(isCarouselActive: Boolean, animationsDisabled: Boolean) {
-        if (!isCarouselActive || state.phase == HeroRollPhase.Rolling || state.candidates.size < 2) return
+    fun roll(animationsDisabled: Boolean) {
+        if (state.phase == HeroRollPhase.Rolling || state.candidates.size < 2) return
 
         if (animationsDisabled) {
             val winner = state.candidates.random()
