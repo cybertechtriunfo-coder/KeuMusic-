@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.isActive
@@ -73,15 +74,23 @@ internal class HeroRollController(
     }
 
     fun cancelRoll() {
+        val activeJob = rollJob
+        rollJob = null
+        activeJob?.cancel()
+
         if (state.phase == HeroRollPhase.Rolling) {
-            rollJob?.cancel()
-            rollJob = null
             state.phase = HeroRollPhase.Idle
         }
     }
 
     fun roll(isCarouselActive: Boolean, animationsDisabled: Boolean) {
-        if (!isCarouselActive || state.phase == HeroRollPhase.Rolling || state.candidates.size < 2) return
+        if (!isCarouselActive ||
+            state.phase == HeroRollPhase.Rolling ||
+            state.candidates.size < 2
+        ) return
+
+        rollJob?.cancel()
+        rollJob = null
 
         if (animationsDisabled) {
             val winner = state.candidates.random()
@@ -92,21 +101,28 @@ internal class HeroRollController(
             return
         }
 
-        rollJob?.cancel()
-        rollJob = scope.launch {
-            state.phase = HeroRollPhase.Rolling
+        val candidateList = state.candidates
+        val count = candidateList.size
+
+        var currentJob: Job? = null
+
+        // Bloqueia novos toques imediatamente, antes da coroutine começar.
+        state.phase = HeroRollPhase.Rolling
+
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
-                val candidateList = state.candidates
-                val count = candidateList.size
                 val winnerIndex = Random.nextInt(count)
                 val duration = Random.nextInt(
                     HeroCarouselTokens.GachaMinRollMillis,
                     HeroCarouselTokens.GachaMaxRollMillis + 1,
                 )
+
                 val start = state.reel.value.roundToInt()
                 state.reel.snapTo(start.toFloat())
+
                 val spins = count * (2 + duration / 2500)
-                val landing = start + spins + (winnerIndex - (start + spins)).mod(count)
+                val landing = start + spins +
+                    (winnerIndex - (start + spins)).mod(count)
 
                 state.reel.animateTo(
                     landing.toFloat(),
@@ -124,19 +140,37 @@ internal class HeroRollController(
                 launch {
                     state.landPop.snapTo(1f)
                     state.landPop.animateTo(1.1f, tween(120))
-                    state.landPop.animateTo(1f, spring(dampingRatio = 0.35f, stiffness = 320f))
+                    state.landPop.animateTo(
+                        1f,
+                        spring(dampingRatio = 0.35f, stiffness = 320f)
+                    )
                 }
+
                 launch {
                     state.burst.snapTo(0.001f)
-                    state.burst.animateTo(1f, tween(1100, easing = CubicBezierEasing(0.2f, 0.7f, 0.3f, 1f)))
+                    state.burst.animateTo(
+                        1f,
+                        tween(
+                            1100,
+                            easing = CubicBezierEasing(0.2f, 0.7f, 0.3f, 1f)
+                        )
+                    )
                     state.burst.snapTo(0f)
                 }
             } finally {
-                if (state.phase == HeroRollPhase.Rolling) {
-                    state.phase = HeroRollPhase.Idle
+                // Uma tarefa antiga não pode encerrar uma rolagem mais recente.
+                if (rollJob === currentJob) {
+                    rollJob = null
+                    if (state.phase == HeroRollPhase.Rolling) {
+                        state.phase = HeroRollPhase.Idle
+                    }
                 }
             }
         }
+
+        currentJob = job
+        rollJob = job
+        job.start()
     }
 }
 
@@ -160,6 +194,9 @@ internal fun HeroRollEffects(
     scope: CoroutineScope = rememberCoroutineScope(),
 ) {
     val state = controller.state
+    val soundEffects = remember(context.applicationContext) {
+        HeroRollSoundEffects(context.applicationContext)
+    }
 
     LaunchedEffect(items) {
         controller.syncCandidates(items)
@@ -175,6 +212,18 @@ internal fun HeroRollEffects(
         }
     }
 
+    DisposableEffect(soundEffects) {
+        onDispose { soundEffects.release() }
+    }
+
+    LaunchedEffect(state.phase, soundEffects) {
+        when (state.phase) {
+            HeroRollPhase.Rolling -> soundEffects.startSpin()
+            HeroRollPhase.Landed -> soundEffects.playWin()
+            HeroRollPhase.Idle -> soundEffects.stopSpin()
+        }
+    }
+
     val candidates = state.candidates
     LaunchedEffect(candidates) {
         candidates.forEach { item ->
@@ -184,12 +233,13 @@ internal fun HeroRollEffects(
         }
     }
 
-    LaunchedEffect(state, isCarouselActive) {
+    LaunchedEffect(state, isCarouselActive, soundEffects) {
         var lastBuzz = 0L
         snapshotFlow { state.reel.value.roundToInt() }
             .drop(1)
             .collect {
                 if (state.phase != HeroRollPhase.Rolling || !isCarouselActive) return@collect
+                soundEffects.playTick()
                 val now = SystemClock.uptimeMillis()
                 if (now - lastBuzz >= 45L) {
                     lastBuzz = now
