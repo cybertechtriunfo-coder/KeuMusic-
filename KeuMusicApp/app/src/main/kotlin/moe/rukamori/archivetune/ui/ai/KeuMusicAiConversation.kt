@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -47,8 +48,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.Normalizer
 import java.util.Locale
+import moe.rukamori.archivetune.ai.KeuMusicAiBrain
 
 private data class KeuMusicAiLine(val author: String, val message: String)
 
@@ -63,6 +66,8 @@ fun KeuMusicAiConversation(
 ) {
     val context = LocalContext.current
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
+    val conversationScope = rememberCoroutineScope()
+    var isThinking by remember { mutableStateOf(false) }
     var input by rememberSaveable { mutableStateOf("") }
     var ttsInitialized by remember { mutableStateOf(false) }
     var voiceReady by remember { mutableStateOf(false) }
@@ -165,6 +170,24 @@ fun KeuMusicAiConversation(
         }
     }
 
+    fun askKeuMusicAi(question: String) {
+        if (isThinking) return
+        isThinking = true
+        voiceStatus = "Keu está pensando na resposta..."
+        conversationScope.launch {
+            try {
+                val history = conversation.dropLast(1).takeLast(8).map { "${it.author}: ${it.message}" }
+                val answer = KeuMusicAiBrain.reply(context, question, history)
+                isThinking = false
+                speak(answer)
+            } catch (error: Exception) {
+                isThinking = false
+                voiceStatus = "Não consegui acessar a inteligência do Keu. Confira a configuração em Integração de IA."
+                speak("Tive um problema para acessar minha inteligência agora. Verifique a configuração da Integração de IA e tente novamente.")
+            }
+        }
+    }
+
     fun processCommand(rawCommand: String) {
         val command = normalized(rawCommand)
         waitingForCommand = false
@@ -211,7 +234,7 @@ fun KeuMusicAiConversation(
             command.contains("tudo bem") || command == "oi" || command == "ola" ->
                 speak(listOf("Tudo ótimo! E com você?", "Opa! Tudo tranquilo por aqui. E aí?", "Estou bem e pronto para escolher uma música com você.").random())
             else ->
-                speak("Entendi. Ainda estou aprendendo novas funções, mas já posso ajudar com a reprodução e a busca de músicas.")
+                askKeuMusicAi(rawCommand)
         }
     }
 
@@ -395,7 +418,7 @@ fun KeuMusicAiConversation(
             }
         }
         Text(
-            text = voiceStatus,
+            text = if (isThinking) "Keu está pensando..." else voiceStatus,
             color = Color(0xFF9AB4C8),
             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
         )
