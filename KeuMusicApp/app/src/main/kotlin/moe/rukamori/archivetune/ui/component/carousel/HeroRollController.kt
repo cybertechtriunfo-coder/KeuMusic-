@@ -7,6 +7,8 @@
 package moe.rukamori.archivetune.ui.component.carousel
 
 import android.content.Context
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.SystemClock
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.spring
@@ -160,6 +162,11 @@ internal fun HeroRollEffects(
     scope: CoroutineScope = rememberCoroutineScope(),
 ) {
     val state = controller.state
+    val rollTone = remember(context) { ToneGenerator(AudioManager.STREAM_MUSIC, 45) }
+
+    DisposableEffect(rollTone) {
+        onDispose { rollTone.release() }
+    }
 
     LaunchedEffect(items) {
         controller.syncCandidates(items)
@@ -191,13 +198,24 @@ internal fun HeroRollEffects(
             .collect {
                 if (state.phase != HeroRollPhase.Rolling || !isCarouselActive) return@collect
                 val now = SystemClock.uptimeMillis()
-                if (now - lastBuzz >= 45L) {
+                if (now - lastBuzz >= 55L) {
                     lastBuzz = now
                     haptics.segmentTick()
+                    rollTone.startTone(ToneGenerator.TONE_PROP_BEEP2, 22)
                 }
                 scope.launch {
                     state.pointerKick.snapTo(1f)
                     state.pointerKick.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = 900f))
+                }
+            }
+    }
+
+    LaunchedEffect(state) {
+        snapshotFlow { state.phase }
+            .drop(1)
+            .collect { phase ->
+                if (phase == HeroRollPhase.Landed) {
+                    rollTone.startTone(ToneGenerator.TONE_PROP_ACK, 130)
                 }
             }
     }
