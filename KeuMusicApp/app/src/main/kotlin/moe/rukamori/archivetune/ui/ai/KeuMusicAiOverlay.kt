@@ -53,6 +53,10 @@ private val AiPanel = Color(0xE9081020)
 fun KeuMusicAiOverlay() {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var dismissed by rememberSaveable { mutableStateOf(false) }
+    // When the user closes the assistant, stop composing its animation loop
+    // so the hidden overlay does not keep consuming frames in the background.
+    if (dismissed) return
+
     val transition = rememberInfiniteTransition(label = "keumusicAiPulse")
     val pulse by transition.animateFloat(
         initialValue = 0.42f,
@@ -60,8 +64,6 @@ fun KeuMusicAiOverlay() {
         animationSpec = infiniteRepeatable(animation = tween(1700)),
         label = "keumusicAiPulseAlpha",
     )
-
-    if (dismissed) return
 
     Box(
         modifier = Modifier.fillMaxSize(),
