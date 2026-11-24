@@ -290,7 +290,6 @@ val sherpaSha256 = "633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13
 val fetchSherpaOnnx by tasks.registering {
     description = "Downloads the pinned sherpa-onnx Android runtime used by the KeuMusic AI voice engine."
     outputs.file(sherpaAar)
-    onlyIf { !sherpaAar.exists() }
     doLast {
         val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/sherpa-onnx-$sherpaVersion.aar"
         logger.lifecycle("Downloading $url")
