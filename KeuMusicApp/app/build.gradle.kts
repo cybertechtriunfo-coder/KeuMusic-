@@ -324,6 +324,7 @@ implementation(libs.androidx.foundation.layout)
     implementation(libs.datastore)
     implementation(libs.work.runtime)
     implementation("androidx.browser:browser:1.10.0")
+    implementation("org.apache.commons:commons-compress:1.27.1")
 
     implementation(libs.compose.runtime)
     implementation(libs.compose.foundation)
