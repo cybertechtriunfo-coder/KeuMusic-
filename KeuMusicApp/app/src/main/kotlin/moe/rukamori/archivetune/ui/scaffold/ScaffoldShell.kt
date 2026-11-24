@@ -27,6 +27,7 @@ import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalMarqueeEnabled
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.constants.HomeBackgroundStyle
+import moe.rukamori.archivetune.constants.KeuMusicAiEnabledKey
 import moe.rukamori.archivetune.constants.SearchSource
 import moe.rukamori.archivetune.constants.UpdateChannel
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -54,6 +55,8 @@ import moe.rukamori.archivetune.ui.system.rememberBarScrollVisibility
 import moe.rukamori.archivetune.ui.utils.LocalGlobalVisibility
 import moe.rukamori.archivetune.ui.utils.LocalPlayerIsExpanded
 import moe.rukamori.archivetune.utils.SyncUtils
+import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.ui.ai.KeuMusicAiOverlay
 
 @Composable
 fun ScaffoldShell(
@@ -95,6 +98,8 @@ fun ScaffoldShell(
     onResetAodLaunchRequestCount: () -> Unit,
     onHandleIntent: (Intent?, NavHostController) -> Unit,
 ) {
+    val (keuMusicAiEnabled, _) = rememberPreference(KeuMusicAiEnabledKey, false)
+
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize().background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface),
     ) {
@@ -231,6 +236,10 @@ fun ScaffoldShell(
                             updateChannel = updateChannel,
                             coroutineScope = appState.coroutineScope,
                         )
+
+                        if (keuMusicAiEnabled && contentMounted && splashDone) {
+                            KeuMusicAiOverlay()
+                        }
                     }
                 }
             }
