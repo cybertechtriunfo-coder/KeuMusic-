@@ -441,6 +441,8 @@ implementation(libs.androidx.foundation.layout)
     implementation(libs.webkit)
     implementation("org.json:json:20240303")
     implementation(libs.kopus)
+    // Jarvis-derived offline wake-word and microphone engine (MIT; see THIRD_PARTY_LICENSES).
+    implementation(files(sherpaAar).builtBy(fetchSherpaOnnx))
 }
 
 androidComponents {
@@ -475,6 +477,4 @@ configurations.configureEach {
         "androidx.compose.animation:animation-graphics:${libs.versions.compose.get()}",
         "org.jetbrains.kotlin:kotlin-metadata-jvm:${libs.versions.kotlinMetadata.get()}",
     )
-    // Jarvis-derived offline wake-word and microphone engine (MIT; see THIRD_PARTY_LICENSES).
-    implementation(files(sherpaAar).builtBy(fetchSherpaOnnx))
 }
