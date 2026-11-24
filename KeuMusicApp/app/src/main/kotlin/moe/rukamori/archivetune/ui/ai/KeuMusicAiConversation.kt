@@ -64,6 +64,7 @@ fun KeuMusicAiConversation(
     val context = LocalContext.current
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
     var input by rememberSaveable { mutableStateOf("") }
+    var ttsInitialized by remember { mutableStateOf(false) }
     var voiceReady by remember { mutableStateOf(false) }
     var voiceStatus by remember { mutableStateOf("Ative a escuta para conversar sem tocar no microfone.") }
     var permissionGranted by remember {
@@ -89,19 +90,31 @@ fun KeuMusicAiConversation(
 
     val tts = remember(context) {
         TextToSpeech(context) { result ->
-            voiceReady = result == TextToSpeech.SUCCESS
-            voiceStatus = if (result == TextToSpeech.SUCCESS) "Voz do Android • português brasileiro" else "Voz indisponível neste aparelho"
+            ttsInitialized = result == TextToSpeech.SUCCESS
+            if (result != TextToSpeech.SUCCESS) {
+                voiceReady = false
+                voiceStatus = "O mecanismo de voz do Android não iniciou. Verifique o mecanismo de texto para fala nas configurações."
+            }
         }
     }
 
-    LaunchedEffect(voiceReady) {
-        if (voiceReady) {
-            val result = tts.setLanguage(Locale("pt", "BR"))
-            tts.setSpeechRate(0.96f)
-            tts.setPitch(1.04f)
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                voiceReady = false
-                voiceStatus = "Instale uma voz em português brasileiro nas configurações do Android."
+    // Só libera a fala depois que o mecanismo e o idioma estiverem realmente prontos.
+    LaunchedEffect(ttsInitialized) {
+        voiceReady = false
+        if (ttsInitialized) {
+            val brazilianPortuguese = tts.setLanguage(Locale("pt", "BR"))
+            val portuguese = if (
+                brazilianPortuguese == TextToSpeech.LANG_MISSING_DATA ||
+                brazilianPortuguese == TextToSpeech.LANG_NOT_SUPPORTED
+            ) tts.setLanguage(Locale("pt")) else brazilianPortuguese
+
+            if (portuguese >= TextToSpeech.LANG_AVAILABLE) {
+                tts.setSpeechRate(0.96f)
+                tts.setPitch(1.04f)
+                voiceReady = true
+                voiceStatus = "Voz pronta • português brasileiro"
+            } else {
+                voiceStatus = "Não encontrei voz em português. Instale Português (Brasil) no mecanismo de voz do Android."
             }
         }
     }
@@ -135,9 +148,19 @@ fun KeuMusicAiConversation(
         conversation.add(KeuMusicAiLine("KeuMusic", answer))
         while (conversation.size > 12) conversation.removeAt(0)
         if (voiceReady) {
-            tts.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "keumusic-ai-${System.currentTimeMillis()}")
+            val result = tts.speak(
+                answer,
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "keumusic-ai-${System.currentTimeMillis()}",
+            )
+            if (result == TextToSpeech.ERROR) {
+                voiceStatus = "O mecanismo de voz recusou a reprodução. Confira a voz instalada no Android."
+                onSpeakingChanged(false)
+            }
         } else {
-            voiceStatus = answer
+            voiceStatus = "Resposta exibida, mas a voz ainda não está pronta. " +
+                "Verifique o mecanismo de texto para fala e a voz Português (Brasil) nas configurações do Android."
             restartSignal++
         }
     }
@@ -249,6 +272,12 @@ fun KeuMusicAiConversation(
             @Deprecated("Deprecated in Android API")
             override fun onError(utteranceId: String?) {
                 onSpeakingChanged(false)
+                voiceStatus = "Falha ao reproduzir a voz. Confira o mecanismo TTS e o idioma Português (Brasil) do Android."
+                if (latestHandsFreeEnabled) restartSignal++
+            }
+            override fun onError(utteranceId: String?, errorCode: Int) {
+                onSpeakingChanged(false)
+                voiceStatus = "Falha no áudio da resposta (código ${errorCode}). Verifique a voz instalada no Android."
                 if (latestHandsFreeEnabled) restartSignal++
             }
         })
