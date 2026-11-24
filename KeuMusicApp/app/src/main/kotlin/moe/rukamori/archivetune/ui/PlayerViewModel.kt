@@ -516,6 +516,19 @@ class PlayerViewModel @Inject constructor(
         playbackStateHolder.togglePlayPause()
     }
 
+    fun pausePlayback() {
+        playerConnection?.player?.pause()
+    }
+
+    fun resumePlayback() {
+        playerConnection?.player?.play()
+    }
+
+    fun playFromVoiceSearch(query: String) {
+        if (query.isBlank()) return
+        playerConnection?.playFromVoiceSearch(query)
+    }
+
     fun seekTo(positionMs: Long) {
         (playerConnection?.service?.activeVideoPlayer ?: audioPlayer)?.seekTo(positionMs)
         progressTicker.onSeekFinished()
