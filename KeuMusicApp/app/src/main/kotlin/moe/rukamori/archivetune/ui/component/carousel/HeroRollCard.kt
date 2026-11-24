@@ -236,34 +236,20 @@ internal fun HeroRollCard(
                             .background(HeroCarouselTokens.ArtOverlayButtonSurface)
                             .clickable(
                                 enabled = !rolling,
-                                onClick = {
-                                    if (result != null && !isResultPlaying) {
-                                        onPlayResult(result.id)
-                                    } else {
-                                        onRoll()
-                                    }
-                                }
+                                onClick = onRoll,
                             )
                             .padding(horizontal = 18.dp, vertical = 10.dp)
                     ) {
-                        if (rolling || result == null || isResultPlaying) {
-                            HeroRollDie(spinning = rolling && !animationsDisabled, animationsDisabled = animationsDisabled)
-                            Spacer(modifier = Modifier.width(8.dp))
-                        } else {
-                            Icon(
-                                painter = painterResource(R.drawable.play),
-                                contentDescription = null,
-                                tint = HeroCarouselTokens.ArtOverlayButtonContent,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
+                        HeroRollDie(
+                            spinning = rolling && !animationsDisabled,
+                            animationsDisabled = animationsDisabled,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
 
                         Text(
                             text = when {
                                 rolling -> stringResource(R.string.quick_picks_hero_rolling)
-                                result != null && !isResultPlaying -> stringResource(R.string.play)
-                                result != null && isResultPlaying -> stringResource(R.string.quick_picks_hero_roll_again)
+                                result != null -> stringResource(R.string.quick_picks_hero_roll_again)
                                 else -> stringResource(R.string.quick_picks_hero_roll_action)
                             },
                             style = MaterialTheme.typography.labelLarge,
@@ -280,13 +266,18 @@ internal fun HeroRollCard(
                                 .heightIn(min = HeroCarouselTokens.MinTouchTarget)
                                 .clip(CircleShape)
                                 .background(HeroCarouselTokens.ArtOverlayButtonSecondarySurface)
-                                .clickable(onClick = onRoll)
+                                .clickable(onClick = { onPlayResult(result.id) })
                                 .padding(horizontal = 16.dp, vertical = 10.dp)
                         ) {
-                            HeroRollDie(spinning = false, animationsDisabled = animationsDisabled)
+                            Icon(
+                                painter = painterResource(R.drawable.play),
+                                contentDescription = null,
+                                tint = HeroCarouselTokens.ArtOverlayTextPrimary,
+                                modifier = Modifier.size(18.dp),
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = stringResource(R.string.quick_picks_hero_roll_again),
+                                text = stringResource(R.string.quick_picks_hero_roll_play_result),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Medium,
                                 color = HeroCarouselTokens.ArtOverlayTextPrimary,
