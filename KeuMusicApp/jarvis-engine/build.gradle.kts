@@ -17,8 +17,10 @@ android {
             java.srcDir("../third_party/jarvis-source/app/src/main/java")
             res.srcDir("../third_party/jarvis-source/app/src/main/res")
             assets.srcDir("../third_party/jarvis-source/app/src/main/assets")
-        getByName("test").java.srcDir("../third_party/jarvis-source/app/src/test/java")
             manifest.srcFile("src/main/AndroidManifest.xml")
+        }
+        getByName("test") {
+            java.srcDir("../third_party/jarvis-source/app/src/test/java")
         }
     }
 
