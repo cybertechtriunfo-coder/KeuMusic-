@@ -14,6 +14,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,11 +31,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -53,6 +60,8 @@ private val AiPanel = Color(0xE9081020)
 fun KeuMusicAiOverlay() {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var dismissed by rememberSaveable { mutableStateOf(false) }
+    var avatarX by rememberSaveable { mutableFloatStateOf(Float.NaN) }
+    var avatarY by rememberSaveable { mutableFloatStateOf(Float.NaN) }
     // When the user closes the assistant, stop composing its animation loop
     // so the hidden overlay does not keep consuming frames in the background.
     if (dismissed) return
@@ -65,10 +74,16 @@ fun KeuMusicAiOverlay() {
         label = "keumusicAiPulseAlpha",
     )
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.BottomEnd,
-    ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val avatarSize = 76.dp
+        val margin = 18.dp
+        val maxWidthPx = with(density) { maxWidth.toPx() }
+        val maxHeightPx = with(density) { maxHeight.toPx() }
+        val avatarSizePx = with(density) { avatarSize.toPx() }
+        val marginPx = with(density) { margin.toPx() }
+        val startX = if (avatarX.isNaN()) (maxWidthPx - avatarSizePx - marginPx).coerceAtLeast(0f) else avatarX
+        val startY = if (avatarY.isNaN()) (maxHeightPx - avatarSizePx - with(density) { 22.dp.toPx() }).coerceAtLeast(0f) else avatarY
         if (expanded) {
             Column(
                 modifier = Modifier
@@ -177,15 +192,22 @@ fun KeuMusicAiOverlay() {
         } else {
             Box(
                 modifier = Modifier
-                    .padding(end = 18.dp, bottom = 22.dp)
-                    .size(76.dp)
-                    .clip(CircleShape)
-                    .background(Brush.radialGradient(listOf(Color(0xDD1C4970), AiPanel, Color(0xE8061020))))
-                    .border(1.5.dp, AiCyan.copy(alpha = pulse), CircleShape)
+                    .offset { IntOffset(startX.roundToInt(), startY.roundToInt()) }
+                    .size(avatarSize)
+                    .pointerInput(maxWidth, maxHeight) {
+                        detectDragGestures(
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                avatarX = (startX + dragAmount.x).coerceIn(0f, (maxWidthPx - avatarSizePx).coerceAtLeast(0f))
+                                avatarY = (startY + dragAmount.y).coerceIn(0f, (maxHeightPx - avatarSizePx).coerceAtLeast(0f))
+                            },
+                        )
+                    }
                     .clickable { expanded = true },
                 contentAlignment = Alignment.Center,
             ) {
-                HologramFace(size = 54.dp, pulse = pulse)
+                // Temporary holographic face; this will be replaced by the final animated avatar asset.
+                HologramFace(size = avatarSize, pulse = pulse)
             }
         }
     }
