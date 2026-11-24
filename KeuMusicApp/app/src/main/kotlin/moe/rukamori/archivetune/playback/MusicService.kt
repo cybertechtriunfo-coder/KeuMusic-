@@ -908,6 +908,11 @@ class MusicService :
     }
 
     fun setVideoQueue(videoIds: List<String>, selectedVideoId: String) {
+        // A new selection supersedes the previous video's pending auto-advance.
+        videoAutoAdvanceEnabled = false
+        videoAutoAdvanceJob?.cancel()
+        videoAutoAdvanceJob = null
+
         val validIds = videoIds
             .filter { it.matches(Regex("[A-Za-z0-9_-]{11}")) }
             .distinct()
