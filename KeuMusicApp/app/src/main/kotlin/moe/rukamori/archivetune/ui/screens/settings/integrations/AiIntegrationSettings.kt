@@ -59,6 +59,7 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -96,6 +97,7 @@ import moe.rukamori.archivetune.constants.AiApiValidationStatus
 import moe.rukamori.archivetune.constants.AiApiValidationStatusKey
 import moe.rukamori.archivetune.constants.AiCustomEndpointKey
 import moe.rukamori.archivetune.constants.AiCustomModelKey
+import moe.rukamori.archivetune.constants.KeuMusicAiEnabledKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
 import moe.rukamori.archivetune.constants.AiSelectedModelKey
@@ -129,6 +131,7 @@ fun AiIntegrationSettings(
     val (selectedModel, setSelectedModel) = rememberPreference(AiSelectedModelKey, "")
     val (customModel, setCustomModel) = rememberPreference(AiCustomModelKey, "")
     var showApiKeyDialog by rememberSaveable { mutableStateOf(false) }
+    val (assistantEnabled, setAssistantEnabled) = rememberPreference(KeuMusicAiEnabledKey, false)
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { message ->
@@ -167,6 +170,20 @@ fun AiIntegrationSettings(
         onBackClick = navController::navigateUp,
         onBackLongClick = navController::backToMain,
     ) {
+        PreferenceGroup(title = "KeuMusic AI") {
+            item {
+                PreferenceEntry(
+                    title = { Text("Assistente virtual flutuante") },
+                    description = "Mostrar o avatar holográfico nas telas do aplicativo.",
+                    icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
+                    trailingContent = {
+                        Switch(checked = assistantEnabled, onCheckedChange = setAssistantEnabled)
+                    },
+                    onClick = { setAssistantEnabled(!assistantEnabled) },
+                )
+            }
+        }
+
         PreferenceGroup(title = stringResource(R.string.ai_provider_settings)) {
             item {
                 ListPreference(
