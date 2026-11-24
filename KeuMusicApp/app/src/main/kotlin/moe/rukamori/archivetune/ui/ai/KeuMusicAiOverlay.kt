@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import moe.rukamori.archivetune.ui.PlayerViewModel
 
 private val AiCyan = Color(0xFF55E9FF)
 private val AiBlue = Color(0xFF438BFF)
@@ -58,7 +59,7 @@ private val AiPurple = Color(0xFF9B72FF)
 private val AiPanel = Color(0xE9081020)
 
 @Composable
-fun KeuMusicAiOverlay() {
+fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var dismissed by rememberSaveable { mutableStateOf(false) }
     var aiSpeaking by rememberSaveable { mutableStateOf(false) }
@@ -192,6 +193,11 @@ fun KeuMusicAiOverlay() {
                 )
                 KeuMusicAiConversation(
                     onSpeakingChanged = { aiSpeaking = it },
+                    onPlayNext = playerViewModel::playNext,
+                    onPlayPrevious = playerViewModel::playPrevious,
+                    onPausePlayback = playerViewModel::pausePlayback,
+                    onResumePlayback = playerViewModel::resumePlayback,
+                    onVoiceSearch = playerViewModel::playFromVoiceSearch,
                 )
             }
         } else {
