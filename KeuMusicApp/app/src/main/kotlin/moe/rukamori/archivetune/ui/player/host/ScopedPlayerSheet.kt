@@ -1,6 +1,7 @@
 package moe.rukamori.archivetune.ui.player.host
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,16 @@ internal fun ScopedPlayerSheet(
 ) {
     val uiState by playerViewModel.uiState.collectAsStateWithLifecycle()
     val queueState by playerViewModel.queueState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(playerConnection, navController) {
+        playerConnection?.videoNavigationRequests?.collect { nextVideoId ->
+            if (nextVideoId.matches(Regex("[A-Za-z0-9_-]{11}"))) {
+                navController.navigate("youtube_video/$nextVideoId") {
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
 
     var showArtistChoiceSheet by rememberSaveable { mutableStateOf(false) }
     val currentMetadata by playerConnection?.mediaMetadata?.collectAsStateWithLifecycle()
