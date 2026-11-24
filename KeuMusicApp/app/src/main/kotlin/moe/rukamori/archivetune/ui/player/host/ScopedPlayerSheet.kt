@@ -60,6 +60,22 @@ internal fun ScopedPlayerSheet(
         onCloseVideo = { playerViewModel.stopVideoPlayback() },
         onAction = { action ->
             when (action) {
+                is PlayerAction.Next, is PlayerAction.SkipNext -> {
+                    val connection = playerConnection
+                    if (connection?.service?.activeVideoPlayer != null) {
+                        connection.playNextVideo()
+                    } else {
+                        playerViewModel.handleAction(action)
+                    }
+                }
+                is PlayerAction.Previous, is PlayerAction.SkipPrevious -> {
+                    val connection = playerConnection
+                    if (connection?.service?.activeVideoPlayer != null) {
+                        connection.playPreviousVideo()
+                    } else {
+                        playerViewModel.handleAction(action)
+                    }
+                }
                 is PlayerAction.StartRadio -> {
                     playerConnection?.startRadioSeamlessly()
                 }
