@@ -61,6 +61,7 @@ private val AiPanel = Color(0xE9081020)
 fun KeuMusicAiOverlay() {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var dismissed by rememberSaveable { mutableStateOf(false) }
+    var aiSpeaking by rememberSaveable { mutableStateOf(false) }
     var avatarX by rememberSaveable { mutableFloatStateOf(Float.NaN) }
     var avatarY by rememberSaveable { mutableFloatStateOf(Float.NaN) }
     // When the user closes the assistant, stop composing its animation loop
@@ -90,7 +91,7 @@ fun KeuMusicAiOverlay() {
                 modifier = Modifier
                     .fillMaxWidth(0.90f)
                     .padding(end = 14.dp, bottom = 18.dp)
-                    .heightIn(max = 470.dp)
+                    .heightIn(max = 640.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(
                         Brush.linearGradient(
@@ -155,7 +156,7 @@ fun KeuMusicAiOverlay() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        HologramFace(size = 118.dp, pulse = pulse)
+                        HologramFace(size = 104.dp, pulse = pulse, speaking = aiSpeaking)
                         Text(
                             text = "Olá! Eu sou o KeuMusic AI",
                             color = Color.White,
@@ -183,11 +184,14 @@ fun KeuMusicAiOverlay() {
                 }
 
                 Text(
-                    text = "A aparência holográfica já está em teste. A conversa inteligente, o microfone e a voz serão conectados na próxima etapa.",
+                    text = "CONVERSA EXPERIMENTAL • voz em português e reconhecimento de fala do Android.",
                     color = Color.White.copy(alpha = 0.76f),
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 3,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                )
+                KeuMusicAiConversation(
+                    onSpeakingChanged = { aiSpeaking = it },
                 )
             }
         } else {
@@ -208,7 +212,7 @@ fun KeuMusicAiOverlay() {
                 contentAlignment = Alignment.Center,
             ) {
                 // Temporary holographic face; this will be replaced by the final animated avatar asset.
-                HologramFace(size = avatarSize, pulse = pulse)
+                HologramFace(size = avatarSize, pulse = pulse, speaking = aiSpeaking)
             }
         }
     }
@@ -238,7 +242,7 @@ private fun MatrixGrid(modifier: Modifier = Modifier, pulse: Float) {
 }
 
 @Composable
-private fun HologramFace(size: Dp, pulse: Float) {
+private fun HologramFace(size: Dp, pulse: Float, speaking: Boolean = false) {
     Box(
         modifier = Modifier
             .size(size)
@@ -268,7 +272,8 @@ private fun HologramFace(size: Dp, pulse: Float) {
                     .align(Alignment.BottomCenter)
                     .padding(bottom = size * 0.16f)
                     .width(size * 0.18f)
-                    .height(2.dp)
+                    .height(if (speaking) 6.dp else 2.dp)
+                    .width(if (speaking) size * 0.24f else size * 0.18f)
                     .clip(CircleShape)
                     .background(AiCyan),
             )
