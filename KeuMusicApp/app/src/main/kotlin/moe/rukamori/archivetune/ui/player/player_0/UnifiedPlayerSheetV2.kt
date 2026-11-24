@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.media3.exoplayer.ExoPlayer
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
@@ -63,6 +64,8 @@ fun UnifiedPlayerSheetV2(
     onOpenQueue: () -> Unit = {},
     onCloseQueueClick: () -> Unit = {},
     dropState: MiniPlayerDropState = MiniPlayerDropState.Default,
+    videoPlayer: ExoPlayer? = null,
+    onCloseVideo: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -168,6 +171,8 @@ fun UnifiedPlayerSheetV2(
                         onSeekStarted = onSeekStarted,
                         onBackgroundStyleChanged = onBackgroundStyleChanged,
                         onImmersiveChanged = onImmersiveChanged,
+                        videoPlayer = videoPlayer,
+                        onCloseVideo = onCloseVideo,
                         onOpenSettingsMenu = { screen ->
                             menuInitialScreen = screen
                             showSettingsMenu = true

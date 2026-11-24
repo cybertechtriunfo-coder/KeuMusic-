@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
 import moe.rukamori.archivetune.ui.player.player_0.full.FullPlayerCoverSlot
@@ -49,6 +50,8 @@ fun FullPlayer(
     lyricsFractionProvider: () -> Float = { if (state.isLyricsVisible) 1f else 0f },
     queueFractionProvider: () -> Float = { 0f },
     isVisible: Boolean = true,
+    videoPlayer: ExoPlayer? = null,
+    onCloseVideo: () -> Unit = {},
 ) {
     val motionState = rememberFullPlayerMotionState(
         state = state,
@@ -114,6 +117,8 @@ fun FullPlayer(
                         queueFractionProvider = queueFractionProvider,
                         lyricsFractionProvider = lyricsFractionProvider,
                         onAction = onAction,
+                        videoPlayer = videoPlayer,
+                        onCloseVideo = onCloseVideo,
                     )
                 },
                 controls = {

@@ -54,22 +54,12 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 8
-        versionName = "1.2.0-RC.3"
+        versionName = "1.0"
 
         manifestPlaceholders["appName"] = "@string/app_name"
 
         val nightlyVersionName = findProperty("nightlyVersionName")?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         val canaryDate = nightlyVersionName?.replace(Regex("[^0-9]"), "")?.takeIf { it.isNotEmpty() }
-        if (nightlyVersionName != null) {
-            versionName = nightlyVersionName
-            val dateCode = (if (canaryDate != null && canaryDate.length > 8) canaryDate.take(8) else canaryDate)
-                ?.toIntOrNull()
-                ?.takeIf { it > 5 }
-            if (dateCode != null) {
-                versionCode = dateCode
-            }
-        }
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
@@ -317,7 +307,6 @@ implementation(libs.androidx.foundation.layout)
     compileOnly("androidx.compose.ui:ui-tooling-preview:${libs.versions.compose.get()}")
     debugImplementation("androidx.compose.ui:ui-tooling-preview:${libs.versions.compose.get()}")
     debugImplementation(libs.compose.ui.tooling)
-    debugImplementation(libs.leakcanary.android)
     implementation(libs.compose.animation)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.reorderable)

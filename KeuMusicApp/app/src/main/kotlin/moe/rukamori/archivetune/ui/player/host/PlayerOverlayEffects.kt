@@ -66,6 +66,22 @@ internal fun PlayerOverlayEffects(
         }
     }
 
+    LaunchedEffect(playerConnection, navController) {
+        playerConnection?.videoNavigationRequests?.collect { videoId ->
+            navController.navigate("youtube_video/$videoId") {
+                launchSingleTop = true
+            }
+        }
+    }
+
+    LaunchedEffect(playerConnection, sheetState) {
+        playerConnection?.expandPlayerRequests?.collect {
+            if (!sheetState.isExpandedOrExpanding) {
+                sheetState.expandSoft()
+            }
+        }
+    }
+
     LaunchedEffect(aodModeLaunchRequestCount, playerConnection) {
         val launchRequestCount = aodModeLaunchRequestCount
         if (launchRequestCount == 0) return@LaunchedEffect

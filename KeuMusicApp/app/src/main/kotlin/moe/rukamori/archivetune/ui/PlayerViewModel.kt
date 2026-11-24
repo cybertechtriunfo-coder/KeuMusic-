@@ -160,7 +160,7 @@ class PlayerViewModel @Inject constructor(
 
     val progressTicker = ProgressTicker(
         coroutineScope = viewModelScope,
-        audioPlayerProvider = { audioPlayer },
+        audioPlayerProvider = { playerConnection?.service?.activeVideoPlayer ?: audioPlayer },
         updatePlaybackProgress = { progressMs -> _playbackProgress.value = progressMs },
         updateDuration = { durationMs ->
             _uiState.update { current ->
@@ -194,6 +194,14 @@ class PlayerViewModel @Inject constructor(
     private val _event = Channel<PlayerEvent>(Channel.BUFFERED)
     val event: Flow<PlayerEvent> = _event.receiveAsFlow()
 
+    fun registerVideoPlayback(videoId: String) {
+        playerConnection?.registerVideoPlayback(videoId)
+    }
+
+    fun requestSheetExpand() {
+        playerConnection?.requestPlayerExpand()
+    }
+
     init {
         // Подписка на лирику из базы данных через холдер плеера
         viewModelScope.launch {
@@ -225,6 +233,20 @@ class PlayerViewModel @Inject constructor(
     // Единая точка входа для UI-действий шторки
     // ==========================================
     fun handleAction(action: PlayerAction) {
+        if (playerConnection?.service?.activeVideoPlayer != null) {
+            when (action) {
+                is PlayerAction.Next, is PlayerAction.SkipNext -> {
+                    playerConnection?.playNextVideo()
+                    return
+                }
+                is PlayerAction.Previous, is PlayerAction.SkipPrevious -> {
+                    playerConnection?.playPreviousVideo()
+                    return
+                }
+                else -> Unit
+            }
+        }
+
         when (action) {
             is PlayerAction.PlayPause -> playbackStateHolder.togglePlayPause()
             is PlayerAction.Next, is PlayerAction.SkipNext -> playbackStateHolder.playNext()
@@ -280,8 +302,12 @@ class PlayerViewModel @Inject constructor(
             }
             is PlayerAction.Dismiss -> {
                 _uiState.update { it.copy(trackUrl = "", title = "", artist = "", coverUrl = "", isPlaying = false) }
-                audioPlayer?.stop()
-                audioPlayer?.clearMediaItems()
+                if (playerConnection?.service?.activeVideoPlayer != null) {
+                    stopVideoPlayback()
+                } else {
+                    audioPlayer?.stop()
+                    audioPlayer?.clearMediaItems()
+                }
             }
             is PlayerAction.TranslateLyrics -> translateLyrics(action.langCode, action.useAi)
             is PlayerAction.DeleteLyrics -> deleteLyricsCache()
@@ -491,7 +517,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun seekTo(positionMs: Long) {
-        audioPlayer?.seekTo(positionMs)
+        (playerConnection?.service?.activeVideoPlayer ?: audioPlayer)?.seekTo(positionMs)
         progressTicker.onSeekFinished()
         _playbackProgress.value = positionMs
     }

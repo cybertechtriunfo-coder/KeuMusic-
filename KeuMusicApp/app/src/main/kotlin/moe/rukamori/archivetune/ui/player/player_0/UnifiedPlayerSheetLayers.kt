@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.flow.StateFlow
 import moe.rukamori.archivetune.constants.FloatingToolbarHorizontalPadding
 import moe.rukamori.archivetune.ui.player.player_0.buttons.PlayerAction
@@ -54,6 +55,8 @@ internal fun UnifiedPlayerSheetLayers(
     modifier: Modifier = Modifier,
     onSeekStarted: () -> Unit,
     dragHandler: SheetVerticalDragGestureHandler? = null,
+    videoPlayer: ExoPlayer? = null,
+    onCloseVideo: () -> Unit = {},
 ) {
     val density = LocalDensity.current.density
     val canvasState = rememberPlayerCanvasState(state.trackUrl, state.title, state.artist)
@@ -155,7 +158,9 @@ internal fun UnifiedPlayerSheetLayers(
                         onSeekStarted = onSeekStarted,
                         lyricsFractionProvider = lyricsFractionProvider,
                         queueFractionProvider = queueFractionProvider,
-                        isVisible = isFullPlayerVisible
+                        isVisible = isFullPlayerVisible,
+                        videoPlayer = videoPlayer,
+                        onCloseVideo = onCloseVideo,
                     )
                 }
 

@@ -66,7 +66,10 @@ internal fun NavGraphBuilder.mediaNavigationRoutes(
         arguments = listOf(navArgument("videoId") { type = NavType.StringType }),
     ) { entry ->
         entry.arguments?.getString("videoId")?.let { videoId ->
-            YouTubeVideoScreen(videoId = videoId)
+            YouTubeVideoScreen(
+                videoId = videoId,
+                onVideoStarted = { navController.popBackStack() },
+            )
         }
     }
 

@@ -38,11 +38,15 @@ internal fun ScopedPlayerSheet(
     val artists = remember(currentMetadata?.artists) {
         currentMetadata?.artists.orEmpty().filter { !it.id.isNullOrBlank() }
     }
+    val activeVideoPlayer = playerConnection?.service?.activeVideoPlayer
+        ?.takeIf { it.currentMediaItem?.mediaId == currentMetadata?.id }
 
     UnifiedPlayerSheetV2(
         state = uiState,
         queueState = queueState,
         playbackProgress = playerViewModel.playbackProgress,
+        videoPlayer = activeVideoPlayer,
+        onCloseVideo = { playerViewModel.stopVideoPlayback() },
         onAction = { action ->
             when (action) {
                 is PlayerAction.StartRadio -> {
