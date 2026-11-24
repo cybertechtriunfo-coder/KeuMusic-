@@ -926,6 +926,7 @@ class MusicService :
         if (!videoAutoAdvanceEnabled || activeVideoPlayerInternal !== endedPlayer) return
         repeat(5) {
             val nextVideoId = nextVideoCandidate(endedVideoId) ?: return
+            videoPlayedIds.add(nextVideoId)
             try {
                 val stream = withContext(Dispatchers.IO) {
                     InnerTubeVideoResolver.resolve(videoId = nextVideoId, preferredMaxHeight = 720)
@@ -940,7 +941,6 @@ class MusicService :
                 )
                 val mediaSource = createVideoMediaSource(stream, metadata)
                 if (!videoAutoAdvanceEnabled || activeVideoPlayerInternal !== endedPlayer) return
-                videoPlayedIds.add(nextVideoId)
                 startVideoPlaybackInternal(mediaSource, metadata, preserveAutoAdvanceState = true)
                 android.util.Log.i("KeuMusicVideo", "Reprodução automática avançou para $nextVideoId")
                 return
