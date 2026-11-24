@@ -1655,4 +1655,10 @@
     <string name="about_content_desc_discord">Discord</string>
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">Doar</string>
+    <string name="quick_picks_hero_roll_title">Roleta musical</string>
+    <string name="quick_picks_hero_roll_action">Girar roleta</string>
+    <string name="quick_picks_hero_rolling">Girando...</string>
+    <string name="quick_picks_hero_roll_again">Girar novamente</string>
+    <string name="quick_picks_hero_roll_result">Sua escolha</string>
+    <string name="quick_picks_hero_roll_play_result">Ouvir escolha</string>
 </resources>
