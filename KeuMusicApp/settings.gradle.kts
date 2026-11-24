@@ -46,7 +46,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "KeuMusic"
 include(":app")
-include(":jarvis-engine")
 include(":designsystem")
 include(":database")
 include(":core")
