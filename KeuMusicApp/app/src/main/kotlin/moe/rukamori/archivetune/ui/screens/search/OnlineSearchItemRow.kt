@@ -47,6 +47,7 @@ fun LazyItemScope.OnlineSearchItemRow(
     mediaMetadata: MediaMetadata?,
     coroutineScope: CoroutineScope,
     isVideoResult: Boolean = false,
+    videoQueue: List<String> = emptyList(),
     modifier: Modifier = Modifier,
     menuState: MenuState = LocalMenuState.current,
     haptics: YumaHaptics = rememberYumaHaptics(),
@@ -115,6 +116,7 @@ fun LazyItemScope.OnlineSearchItemRow(
                         when (item) {
                             is SongItem -> {
                                 if (isVideoResult) {
+                                    playerConnection.service.setVideoQueue(videoQueue, item.id)
                                     navController.navigate("youtube_video/${item.id}")
                                 } else if (item.id == mediaMetadata?.id) {
                                     playerConnection.player.togglePlayPause()

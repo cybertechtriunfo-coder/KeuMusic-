@@ -57,6 +57,7 @@ import moe.rukamori.archivetune.innertube.SearchFilter.Companion.FILTER_COMMUNIT
 import moe.rukamori.archivetune.innertube.SearchFilter.Companion.FILTER_FEATURED_PLAYLIST
 import moe.rukamori.archivetune.innertube.SearchFilter.Companion.FILTER_SONG
 import moe.rukamori.archivetune.innertube.SearchFilter.Companion.FILTER_VIDEO
+import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.pages.SearchSummary
 import moe.rukamori.archivetune.ui.component.EmptyPlaceholder
@@ -135,7 +136,14 @@ fun OnlineSearchResult(
         }
     }
 
-    val ytItemContent: @Composable LazyItemScope.(YTItem, Boolean) -> Unit = { item, isVideoResult ->
+    val filteredItems = viewModel.sortedItems(itemsPage?.items.orEmpty().distinctBy { it.id }, searchSort)
+    val filteredVideoIds = if (searchFilter == FILTER_VIDEO) {
+        filteredItems.filterIsInstance<SongItem>().map { it.id }
+    } else {
+        emptyList()
+    }
+
+    val ytItemContent: @Composable LazyItemScope.(YTItem, Boolean, List<String>) -> Unit = { item, isVideoResult, videoQueue ->
         OnlineSearchItemRow(
             item = item,
             navController = navController,
@@ -144,6 +152,7 @@ fun OnlineSearchResult(
             mediaMetadata = mediaMetadata,
             coroutineScope = coroutineScope,
             isVideoResult = isVideoResult,
+            videoQueue = videoQueue,
             menuState = menuState,
             haptics = haptics,
         )
@@ -192,12 +201,17 @@ fun OnlineSearchResult(
                         OnlineSearchSectionHeader(summary = summary)
                     }
 
+                    val videoQueue = if (isVideoSection) {
+                        summary.items.filterIsInstance<SongItem>().map { it.id }
+                    } else {
+                        emptyList()
+                    }
                     itemsIndexed(
                         items = viewModel.sortedItems(summary.items, searchSort),
                         key = { itemIndex, item -> "${summary.title}/${item.id}/$itemIndex" },
                         contentType = { _, _ -> "search_result" },
                     ) { _, item ->
-                        ytItemContent(item, isVideoSection)
+                        ytItemContent(item, isVideoSection, videoQueue)
                     }
 
                     item(
@@ -215,10 +229,10 @@ fun OnlineSearchResult(
                 }
             } else {
                 items(
-                    items = viewModel.sortedItems(itemsPage?.items.orEmpty().distinctBy { it.id }, searchSort),
+                    items = filteredItems,
                     key = { "filtered_${it.id}" },
                     contentType = { "search_result" },
-                    itemContent = { item -> ytItemContent(item, searchFilter == FILTER_VIDEO) },
+                    itemContent = { item -> ytItemContent(item, searchFilter == FILTER_VIDEO, filteredVideoIds) },
                 )
 
                 if (itemsPage?.continuation != null) {

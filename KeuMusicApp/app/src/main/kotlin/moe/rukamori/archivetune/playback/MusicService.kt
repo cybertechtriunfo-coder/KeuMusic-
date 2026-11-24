@@ -56,6 +56,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -69,7 +72,9 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -79,6 +84,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.audiodsp.AudioDeck
 import moe.rukamori.archivetune.audiodsp.AutomixPlan
 import moe.rukamori.archivetune.audiodsp.CrossfadeConfig
@@ -101,6 +107,8 @@ import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.LyricsPreloadManager
+import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
@@ -125,6 +133,7 @@ import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
 import moe.rukamori.archivetune.utils.ProxyAuth
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.video.InnerTubeVideoResolver
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.reportException
@@ -241,6 +250,31 @@ class MusicService :
 
     // Video playback is owned by MusicService, not by the Compose screen.
     private var activeVideoPlayerInternal: ExoPlayer? = null
+    private var videoAutoAdvanceEnabled = false
+    private var videoAutoAdvanceJob: Job? = null
+    private val videoQueue = mutableListOf<String>()
+    private var videoQueueIndex = -1
+    private val videoRecommendedQueue = ArrayDeque<String>()
+    private val videoPlayedIds = mutableSetOf<String>()
+    private var videoNextEndpoint: WatchEndpoint? = null
+    private var videoNextContinuation: String? = null
+    private val videoAutoAdvanceListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState != Player.STATE_ENDED || !videoAutoAdvanceEnabled) return
+            val endedPlayer = activeVideoPlayerInternal ?: return
+            val endedVideoId = endedPlayer.currentMediaItem?.mediaId ?: return
+            if (videoAutoAdvanceJob?.isActive == true) return
+            videoAutoAdvanceJob = scope.launch {
+                try {
+                    advanceVideoPlayback(endedPlayer, endedVideoId)
+                } finally {
+                    if (videoAutoAdvanceJob === currentCoroutineContext()[Job]) {
+                        videoAutoAdvanceJob = null
+                    }
+                }
+            }
+        }
+    }
     private var playerBeforeVideo: Player? = null
     private var metadataBeforeVideo: MediaMetadata? = null
     private var wasPlayingBeforeVideo = false
@@ -689,10 +723,39 @@ class MusicService :
         playbackRecoveryEngine.recoverSong(mediaId, playbackData)
 
     @UnstableApi
-    fun startVideoPlayback(mediaSource: MediaSource, metadata: MediaMetadata): ExoPlayer {
+    fun startVideoPlayback(mediaSource: MediaSource, metadata: MediaMetadata): ExoPlayer =
+        startVideoPlaybackInternal(mediaSource, metadata, preserveAutoAdvanceState = false)
+
+    @UnstableApi
+    private fun startVideoPlaybackInternal(
+        mediaSource: MediaSource,
+        metadata: MediaMetadata,
+        preserveAutoAdvanceState: Boolean,
+    ): ExoPlayer {
+        if (!preserveAutoAdvanceState) {
+            videoAutoAdvanceJob?.cancel()
+            videoAutoAdvanceJob = null
+            videoAutoAdvanceEnabled = true
+            videoRecommendedQueue.clear()
+            if (metadata.id in videoQueue) {
+                videoQueueIndex = videoQueue.indexOf(metadata.id)
+            } else {
+                videoQueue.clear()
+                videoQueueIndex = -1
+                videoNextEndpoint = WatchEndpoint(videoId = metadata.id)
+                videoNextContinuation = null
+                videoPlayedIds.clear()
+            }
+            videoPlayedIds.add(metadata.id)
+        }
+
         activeVideoPlayerInternal?.let { current ->
             if (current.currentMediaItem?.mediaId == metadata.id) return current
-            stopVideoPlayback(restoreMusic = false)
+            stopVideoPlaybackInternal(
+                restoreMusic = false,
+                updateNotification = true,
+                disableAutoAdvance = false,
+            )
         }
 
         check(isControllerInitialized) { "O serviço de música ainda não terminou de inicializar." }
@@ -737,6 +800,7 @@ class MusicService :
 
             djFilterByPlayer[videoPlayer] = videoFilter
             activeVideoPlayerInternal = videoPlayer
+            videoPlayer.addListener(videoAutoAdvanceListener)
 
             // Keep the existing MediaSession delegate so notification and lock-screen controls remain intact.
             playerEngineHolder.dualForwardingPlayer.attachPlayer(videoPlayer)
@@ -752,6 +816,8 @@ class MusicService :
             return videoPlayer
         } catch (error: Throwable) {
             activeVideoPlayerInternal = null
+            runCatching { videoPlayer.removeListener(videoAutoAdvanceListener) }
+                .onFailure { reportException(it) }
             runCatching {
                 playerEngineHolder.dualForwardingPlayer.attachPlayer(returnPlayer)
             }.onFailure { reportException(it) }
@@ -780,6 +846,25 @@ class MusicService :
     }
 
     fun stopVideoPlayback(restoreMusic: Boolean = false, updateNotification: Boolean = true) {
+        stopVideoPlaybackInternal(restoreMusic, updateNotification, disableAutoAdvance = true)
+    }
+
+    private fun stopVideoPlaybackInternal(
+        restoreMusic: Boolean,
+        updateNotification: Boolean,
+        disableAutoAdvance: Boolean,
+    ) {
+        if (disableAutoAdvance) {
+            videoAutoAdvanceEnabled = false
+            videoAutoAdvanceJob?.cancel()
+            videoAutoAdvanceJob = null
+            videoQueue.clear()
+            videoQueueIndex = -1
+            videoRecommendedQueue.clear()
+            videoPlayedIds.clear()
+            videoNextEndpoint = null
+            videoNextContinuation = null
+        }
         val videoPlayer = activeVideoPlayerInternal ?: return
         activeVideoPlayerInternal = null
 
@@ -787,6 +872,7 @@ class MusicService :
         val resumeMusic = restoreMusic && wasPlayingBeforeVideo
 
         // Cleanup is best-effort, but state restoration must always run even if a player call fails.
+        runCatching { videoPlayer.removeListener(videoAutoAdvanceListener) }.onFailure { reportException(it) }
         runCatching { videoPlayer.playWhenReady = false }.onFailure { reportException(it) }
         runCatching { videoPlayer.pause() }.onFailure { reportException(it) }
         runCatching { videoPlayer.removeListener(playerListeners.audioEffectPlayerListener) }
@@ -818,6 +904,124 @@ class MusicService :
         }
         if (updateNotification) {
             runCatching { refreshPlaybackNotification() }.onFailure { reportException(it) }
+        }
+    }
+
+    fun setVideoQueue(videoIds: List<String>, selectedVideoId: String) {
+        val validIds = videoIds
+            .filter { it.matches(Regex("[A-Za-z0-9_-]{11}")) }
+            .distinct()
+        videoQueue.clear()
+        videoQueue.addAll(validIds)
+        videoQueueIndex = videoQueue.indexOf(selectedVideoId)
+        videoRecommendedQueue.clear()
+        videoPlayedIds.clear()
+        videoPlayedIds.add(selectedVideoId)
+        videoNextEndpoint = WatchEndpoint(videoId = selectedVideoId)
+        videoNextContinuation = null
+        videoAutoAdvanceEnabled = true
+    }
+
+    private suspend fun advanceVideoPlayback(endedPlayer: ExoPlayer, endedVideoId: String) {
+        if (!videoAutoAdvanceEnabled || activeVideoPlayerInternal !== endedPlayer) return
+        repeat(5) {
+            val nextVideoId = nextVideoCandidate(endedVideoId) ?: return
+            try {
+                val stream = withContext(Dispatchers.IO) {
+                    InnerTubeVideoResolver.resolve(videoId = nextVideoId, preferredMaxHeight = 720)
+                }
+                val metadata = MediaMetadata(
+                    id = stream.id,
+                    title = stream.title,
+                    artists = listOf(MediaMetadata.Artist(id = null, name = stream.uploader)),
+                    duration = stream.durationSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                    thumbnailUrl = stream.thumbnailUrl,
+                    isMusicVideo = true,
+                )
+                val mediaSource = createVideoMediaSource(stream, metadata)
+                if (!videoAutoAdvanceEnabled || activeVideoPlayerInternal !== endedPlayer) return
+                videoPlayedIds.add(nextVideoId)
+                startVideoPlaybackInternal(mediaSource, metadata, preserveAutoAdvanceState = true)
+                android.util.Log.i("KeuMusicVideo", "Reprodução automática avançou para $nextVideoId")
+                return
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                android.util.Log.w("KeuMusicVideo", "Falha ao preparar próximo vídeo $nextVideoId; tentando outro", error)
+            }
+        }
+        android.util.Log.w("KeuMusicVideo", "Não há outro vídeo reproduzível na fila nem nas recomendações.")
+    }
+
+    private suspend fun nextVideoCandidate(currentVideoId: String): String? {
+        if (videoQueueIndex in 0 until videoQueue.lastIndex) {
+            val nextId = videoQueue[++videoQueueIndex]
+            videoRecommendedQueue.clear()
+            videoNextEndpoint = WatchEndpoint(videoId = nextId)
+            videoNextContinuation = null
+            return nextId
+        }
+        if (videoRecommendedQueue.isNotEmpty()) return videoRecommendedQueue.removeFirst()
+
+        repeat(3) {
+            val result = withContext(Dispatchers.IO) {
+                YouTube.next(
+                    endpoint = videoNextEndpoint ?: WatchEndpoint(videoId = currentVideoId),
+                    continuation = videoNextContinuation,
+                    followAutomixPreview = true,
+                ).getOrThrow()
+            }
+            videoNextEndpoint = result.endpoint
+            videoNextContinuation = result.continuation
+            result.items.asSequence()
+                .map { it.id }
+                .filter { id ->
+                    id.matches(Regex("[A-Za-z0-9_-]{11}")) &&
+                        id != currentVideoId &&
+                        id !in videoPlayedIds &&
+                        id !in videoRecommendedQueue
+                }
+                .forEach(videoRecommendedQueue::addLast)
+            if (videoRecommendedQueue.isNotEmpty()) return videoRecommendedQueue.removeFirst()
+            if (result.continuation.isNullOrBlank()) return null
+        }
+        return null
+    }
+
+    @UnstableApi
+    private fun createVideoMediaSource(
+        stream: InnerTubeVideoResolver.ResolvedVideoStream,
+        metadata: MediaMetadata,
+    ): MediaSource {
+        val httpFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent(stream.requestHeaders["User-Agent"].orEmpty())
+            .setDefaultRequestProperties(stream.requestHeaders)
+        val media3Metadata = androidx.media3.common.MediaMetadata.Builder()
+            .setTitle(stream.title)
+            .setArtist(stream.uploader)
+            .setArtworkUri(stream.thumbnailUrl?.let(android.net.Uri::parse))
+            .build()
+        val videoItem = MediaItem.Builder()
+            .setMediaId(stream.id)
+            .setTag(metadata)
+            .setMediaMetadata(media3Metadata)
+            .setUri(stream.videoUrl)
+            .setMimeType(stream.videoMimeType)
+            .build()
+        return when (stream.sourceType) {
+            InnerTubeVideoResolver.SourceType.MERGED -> {
+                val audioUrl = stream.audioUrl ?: error("O extrator não retornou a faixa de áudio.")
+                val audioItem = MediaItem.Builder()
+                    .setMediaId("${stream.id}:audio")
+                    .setUri(audioUrl)
+                    .setMimeType(stream.audioMimeType ?: "audio/mp4")
+                    .build()
+                val videoSource = ProgressiveMediaSource.Factory(httpFactory).createMediaSource(videoItem)
+                val audioSource = ProgressiveMediaSource.Factory(httpFactory).createMediaSource(audioItem)
+                MergingMediaSource(videoSource, audioSource)
+            }
+            InnerTubeVideoResolver.SourceType.PROGRESSIVE ->
+                ProgressiveMediaSource.Factory(httpFactory).createMediaSource(videoItem)
         }
     }
 
