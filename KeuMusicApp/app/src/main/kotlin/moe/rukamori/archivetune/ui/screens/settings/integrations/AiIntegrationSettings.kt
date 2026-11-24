@@ -209,7 +209,7 @@ fun AiIntegrationSettings(
                 PreferenceEntry(
                     title = { Text("Reduzir volume durante a fala") },
                     description = "A música deverá abaixar suavemente enquanto o KeuMusic AI falar e voltar ao volume anterior depois.",
-                    icon = { Icon(painterResource(R.drawable.volume), null) },
+                    icon = { Icon(painterResource(R.drawable.volume_up), null) },
                     trailingContent = {
                         Switch(checked = djVoiceDucking, onCheckedChange = setDjVoiceDucking)
                     },
