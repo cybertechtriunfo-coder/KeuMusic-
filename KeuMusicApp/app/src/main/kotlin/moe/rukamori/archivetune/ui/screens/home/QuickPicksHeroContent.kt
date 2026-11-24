@@ -241,7 +241,10 @@ internal fun QuickPicksHeroContent(
             isCarouselActive = isCarouselActive,
             onTrackClick = ::playTrack,
             onTrackLongClick = ::showTrackMenu,
-            onRoll = { rollController.roll(isCarouselActive, animationsDisabled) },
+            onRoll = {
+                rollController.syncCandidates(songHeroItems)
+                rollController.roll(animationsDisabled)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(heroHeight),
