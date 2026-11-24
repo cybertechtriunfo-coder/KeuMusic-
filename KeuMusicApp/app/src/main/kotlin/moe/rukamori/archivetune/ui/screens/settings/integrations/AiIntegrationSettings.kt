@@ -132,6 +132,9 @@ fun AiIntegrationSettings(
     val (customModel, setCustomModel) = rememberPreference(AiCustomModelKey, "")
     var showApiKeyDialog by rememberSaveable { mutableStateOf(false) }
     val (assistantEnabled, setAssistantEnabled) = rememberPreference(KeuMusicAiEnabledKey, false)
+    val (djMode, setDjMode) = rememberPreference(KeuMusicAiDjModeKey, "smart")
+    val (djVoiceDucking, setDjVoiceDucking) = rememberPreference(KeuMusicAiVoiceDuckingKey, true)
+    val (djFrequency, setDjFrequency) = rememberPreference(KeuMusicAiDjFrequencyKey, "sometimes")
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { message ->
@@ -180,6 +183,54 @@ fun AiIntegrationSettings(
                         Switch(checked = assistantEnabled, onCheckedChange = setAssistantEnabled)
                     },
                     onClick = { setAssistantEnabled(!assistantEnabled) },
+                )
+            }
+        }
+
+        PreferenceGroup(title = "DJ Inteligente KeuMusic AI") {
+            item {
+                ListPreference(
+                    title = { Text("Comportamento do DJ") },
+                    description = "Escolha como o assistente participa da experiência musical.",
+                    icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
+                    selectedValue = djMode,
+                    values = listOf("smart", "music", "off"),
+                    valueText = { mode ->
+                        when (mode) {
+                            "smart" -> "Inteligente"
+                            "music" -> "Somente sugestões musicais"
+                            else -> "Desativado"
+                        }
+                    },
+                    onValueSelected = setDjMode,
+                )
+            }
+            item {
+                PreferenceEntry(
+                    title = { Text("Reduzir volume durante a fala") },
+                    description = "A música deverá abaixar suavemente enquanto o KeuMusic AI falar e voltar ao volume anterior depois.",
+                    icon = { Icon(painterResource(R.drawable.volume), null) },
+                    trailingContent = {
+                        Switch(checked = djVoiceDucking, onCheckedChange = setDjVoiceDucking)
+                    },
+                    onClick = { setDjVoiceDucking(!djVoiceDucking) },
+                )
+            }
+            item {
+                ListPreference(
+                    title = { Text("Frequência das sugestões") },
+                    description = "Evita que o assistente interrompa a música muitas vezes.",
+                    icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
+                    selectedValue = djFrequency,
+                    values = listOf("sometimes", "every_track", "rarely"),
+                    valueText = { frequency ->
+                        when (frequency) {
+                            "every_track" -> "Depois de cada música"
+                            "rarely" -> "Raramente"
+                            else -> "De vez em quando"
+                        }
+                    },
+                    onValueSelected = setDjFrequency,
                 )
             }
         }
