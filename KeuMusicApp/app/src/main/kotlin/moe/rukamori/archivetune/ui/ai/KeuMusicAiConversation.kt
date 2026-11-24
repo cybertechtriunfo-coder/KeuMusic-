@@ -4,15 +4,7 @@
 package moe.rukamori.archivetune.ui.ai
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -52,6 +44,7 @@ import kotlinx.coroutines.launch
 import java.text.Normalizer
 import java.util.Locale
 import moe.rukamori.archivetune.ai.KeuMusicAiBrain
+import moe.rukamori.archivetune.ui.ai.engine.KeuOfflineSpeechEngine
 
 private data class KeuMusicAiLine(val author: String, val message: String)
 
@@ -65,7 +58,6 @@ fun KeuMusicAiConversation(
     onVoiceSearch: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val conversationScope = rememberCoroutineScope()
     var isThinking by remember { mutableStateOf(false) }
     var input by rememberSaveable { mutableStateOf("") }
@@ -77,7 +69,7 @@ fun KeuMusicAiConversation(
     }
     var handsFreeEnabled by rememberSaveable { mutableStateOf(false) }
     var waitingForCommand by rememberSaveable { mutableStateOf(false) }
-    var restartSignal by remember { mutableIntStateOf(0) }
+    val voiceEngine = remember(context) { KeuOfflineSpeechEngine(context) }
     val conversation = remember {
         mutableStateListOf(KeuMusicAiLine("KeuMusic", "Olá! Eu sou o KeuMusic AI. Quando você me chamar, vou responder por voz."))
     }
@@ -124,24 +116,6 @@ fun KeuMusicAiConversation(
         }
     }
 
-    val recognizer = remember(context) {
-        when {
-            !SpeechRecognizer.isRecognitionAvailable(context) -> null
-            Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(context) ->
-                SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-            else -> SpeechRecognizer.createSpeechRecognizer(context)
-        }
-    }
-    val recognitionIntent = remember {
-        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-        }
-    }
-
     fun normalized(value: String): String =
         Normalizer.normalize(value.lowercase(Locale("pt", "BR")), Normalizer.Form.NFD)
             .replace("\\p{Mn}+".toRegex(), "")
@@ -166,7 +140,7 @@ fun KeuMusicAiConversation(
         } else {
             voiceStatus = "Resposta exibida, mas a voz ainda não está pronta. " +
                 "Verifique o mecanismo de texto para fala e a voz Português (Brasil) nas configurações do Android."
-            restartSignal++
+
         }
     }
 
@@ -240,7 +214,7 @@ fun KeuMusicAiConversation(
 
     fun handleTranscript(transcript: String) {
         if (transcript.isBlank()) {
-            restartSignal++
+
             return
         }
         conversation.add(KeuMusicAiLine("Você", transcript))
@@ -254,11 +228,12 @@ fun KeuMusicAiConversation(
         val wakePhrases = listOf(
             "keu music", "queu music", "q music", "keu musick", "keu musiq",
             "oi keu", "ola keu", "e ai keu", "bom dia keu", "boa tarde keu", "boa noite keu",
+            "keu", "queu",
         )
         val wakePhrase = wakePhrases.firstOrNull(text::contains)
         if (wakePhrase == null) {
             voiceStatus = "Aguardando: diga Oi, KeuMusic ou E aí, KeuMusic."
-            restartSignal++
+
             return
         }
 
@@ -282,26 +257,26 @@ fun KeuMusicAiConversation(
     }
 
     val latestTranscriptHandler by rememberUpdatedState<(String) -> Unit> { handleTranscript(it) }
-    val latestHandsFreeEnabled by rememberUpdatedState(handsFreeEnabled)
-    val latestPermissionGranted by rememberUpdatedState(permissionGranted)
 
     DisposableEffect(tts) {
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) { onSpeakingChanged(true) }
+            override fun onStart(utteranceId: String?) { voiceEngine.setOutputActive(true); onSpeakingChanged(true) }
             override fun onDone(utteranceId: String?) {
                 onSpeakingChanged(false)
-                if (latestHandsFreeEnabled) restartSignal++
+
             }
             @Deprecated("Deprecated in Android API")
             override fun onError(utteranceId: String?) {
+                voiceEngine.setOutputActive(false)
                 onSpeakingChanged(false)
                 voiceStatus = "Falha ao reproduzir a voz. Confira o mecanismo TTS e o idioma Português (Brasil) do Android."
-                if (latestHandsFreeEnabled) restartSignal++
+
             }
             override fun onError(utteranceId: String?, errorCode: Int) {
+                voiceEngine.setOutputActive(false)
                 onSpeakingChanged(false)
                 voiceStatus = "Falha no áudio da resposta (código ${errorCode}). Verifique a voz instalada no Android."
-                if (latestHandsFreeEnabled) restartSignal++
+
             }
         })
         onDispose {
@@ -311,43 +286,21 @@ fun KeuMusicAiConversation(
         }
     }
 
-    DisposableEffect(recognizer) {
-        if (recognizer == null) {
-            voiceStatus = "Reconhecimento de voz indisponível neste aparelho."
-        } else {
-            recognizer.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    voiceStatus = if (waitingForCommand) "Pode falar, estou ouvindo seu pedido." else "Escutando a chamada KeuMusic."
-                }
-                override fun onBeginningOfSpeech() { voiceStatus = "Estou ouvindo..." }
-                override fun onRmsChanged(rmsdB: Float) = Unit
-                override fun onBufferReceived(buffer: ByteArray?) = Unit
-                override fun onEndOfSpeech() { voiceStatus = "Entendi sua voz. Processando..." }
-                override fun onError(error: Int) {
-                    if (latestHandsFreeEnabled && latestPermissionGranted) {
-                        mainHandler.postDelayed({ runCatching { recognizer.startListening(recognitionIntent) } }, 650)
-                    }
-                }
-                override fun onResults(results: Bundle?) {
-                    val spoken = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
-                    if (!spoken.isNullOrBlank()) latestTranscriptHandler(spoken) else restartSignal++
-                }
-                override fun onPartialResults(partialResults: Bundle?) = Unit
-                override fun onEvent(eventType: Int, params: Bundle?) = Unit
-            })
-        }
+    DisposableEffect(voiceEngine) {
         onDispose {
-            mainHandler.removeCallbacksAndMessages(null)
-            runCatching { recognizer?.cancel() }
-            recognizer?.destroy()
+            voiceEngine.release()
+            onSpeakingChanged(false)
         }
     }
 
-    LaunchedEffect(handsFreeEnabled, permissionGranted, restartSignal, recognizer) {
-        if (handsFreeEnabled && permissionGranted && recognizer != null) {
-            delay(350)
-            runCatching { recognizer.startListening(recognitionIntent) }
-                .onFailure { voiceStatus = "Não consegui iniciar a escuta. Tente desativar e ativar novamente." }
+    LaunchedEffect(handsFreeEnabled, permissionGranted, voiceEngine) {
+        if (handsFreeEnabled && permissionGranted) {
+            voiceEngine.start(
+                status = { voiceStatus = it },
+                transcript = { latestTranscriptHandler(it) },
+            )
+        } else {
+            voiceEngine.stop()
         }
     }
 
@@ -400,7 +353,7 @@ fun KeuMusicAiConversation(
                         if (handsFreeEnabled) voiceStatus = "Escuta automática ativada."
                         else {
                             waitingForCommand = false
-                            recognizer?.cancel()
+                            voiceEngine.stop()
                             voiceStatus = "Escuta automática pausada."
                         }
                     }
@@ -423,7 +376,7 @@ fun KeuMusicAiConversation(
             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
         )
         Text(
-            text = "Escuta experimental: prioriza reconhecimento local quando disponível. A busca e os comandos básicos usam o player do KeuMusic.",
+            text = "Reconhecimento de voz offline em português, processado no aparelho. A conversa inteligente usa o provedor configurado em Integração de IA.",
             color = Color(0xFF8297AA),
             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
         )
