@@ -16,6 +16,9 @@ android {
             // AGP 9 built-in Kotlin compiles Kotlin from the kotlin source set, not java.srcDir.
             kotlin.srcDir("../third_party/jarvis-source/app/src/main/java")
             java.srcDir("../third_party/jarvis-source/app/src/main/java")
+            // Compile the locally adapted Kotlin 2.4-compatible MemoryStore overlay instead.
+            java.exclude("**/memory/MemoryStore.kt")
+            kotlin.srcDir("src/main/kotlin")
             res.srcDir("../third_party/jarvis-source/app/src/main/res")
             assets.srcDir("../third_party/jarvis-source/app/src/main/assets")
             manifest.srcFile("src/main/AndroidManifest.xml")
