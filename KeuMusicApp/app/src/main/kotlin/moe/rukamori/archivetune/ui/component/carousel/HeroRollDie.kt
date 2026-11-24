@@ -53,15 +53,33 @@ internal fun HeroRollDie(
             .size(20.dp)
             .graphicsLayer { rotationZ = rotation.value }
     ) {
-        drawRoundRect(color = Color.White, cornerRadius = CornerRadius(4.5.dp.toPx()))
-        val pip = 2.dp.toPx()
-        val near = size.width * 0.28f
-        val far = size.width * 0.72f
-        val mid = size.width / 2f
-        listOf(
-            Offset(near, near), Offset(far, near),
-            Offset(mid, mid),
-            Offset(near, far), Offset(far, far),
-        ).forEach { drawCircle(color = HeroCarouselTokens.GachaPipColor, radius = pip, center = it) }
+        val wheelColors = listOf(
+            Color(0xFFFF5A5F), Color(0xFFFFB84D), Color(0xFFFFE066),
+            Color(0xFF65C98A), Color(0xFF45B7D1), Color(0xFF7B78E8),
+            Color(0xFFB46BE0), Color(0xFFFF78B7),
+        )
+        val diameter = size.minDimension * 0.88f
+        val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
+        val wheelSize = androidx.compose.ui.geometry.Size(diameter, diameter)
+        wheelColors.forEachIndexed { index, color ->
+            drawArc(
+                color = color,
+                startAngle = index * 45f - 90f,
+                sweepAngle = 45f,
+                useCenter = true,
+                topLeft = topLeft,
+                size = wheelSize,
+            )
+        }
+        drawCircle(
+            color = Color.White,
+            radius = diameter * 0.13f,
+            center = Offset(size.width / 2f, size.height / 2f),
+        )
+        drawCircle(
+            color = Color(0xFF29233D),
+            radius = diameter * 0.065f,
+            center = Offset(size.width / 2f, size.height / 2f),
+        )
     }
 }
