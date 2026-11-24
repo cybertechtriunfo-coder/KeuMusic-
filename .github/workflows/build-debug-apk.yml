@@ -9,6 +9,7 @@ on:
       - keumusic-oficial-1.0
       - feature/keumusic-ai-lab-20261124
       - feature/keumusic-ai-jarvis-engine-20261124
+      - feature/keumusic-ai-ptbr-voice-prep-20261124
   workflow_dispatch:
 
 permissions:
@@ -48,7 +49,7 @@ jobs:
 
       - name: Build KeuMusic Universal debug APK
         working-directory: KeuMusicApp
-        run: ./gradlew --no-daemon :app:assembleGmsMobileUniversalDebug
+        run: ./gradlew --no-daemon --no-configuration-cache :app:assembleGmsMobileUniversalDebug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
