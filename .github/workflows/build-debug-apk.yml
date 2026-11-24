@@ -1,10 +1,11 @@
-name: KeuMusic Debug APK (ARM64)
+name: KeuMusic Debug APK (Universal)
 
 on:
   push:
     branches:
       - integracao-motor-video-yt-dlp-20261122
       - feature/keumusic-video-player-20261123
+      - feature/video-autoplay-queue-20261124
   workflow_dispatch:
 
 permissions:
@@ -42,14 +43,14 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build KeuMusic ARM64 debug APK
+      - name: Build KeuMusic Universal debug APK
         working-directory: KeuMusicApp
-        run: ./gradlew --no-daemon :app:assembleGmsMobileArm64Debug
+        run: ./gradlew --no-daemon :app:assembleGmsMobileUniversalDebug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: KeuMusic-debug-ARM64
-          path: KeuMusicApp/app/build/outputs/apk/gmsMobileArm64/debug/*.apk
+          name: KeuMusic-debug-Universal
+          path: KeuMusicApp/app/build/outputs/apk/gmsMobileUniversal/debug/*.apk
           if-no-files-found: error
           retention-days: 7
