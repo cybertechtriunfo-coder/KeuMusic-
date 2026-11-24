@@ -1,0 +1,72 @@
+name: KeuMusic PR 10 validation
+
+on:
+  push:
+    branches:
+      - fix/video-player-queue-about-clean-20261124
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keumusic-pr10-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-lint:
+    name: Build and lint Android debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
+
+      - name: Install Android platform and CMake
+        run: sdkmanager "platforms;android-37.0" "cmake;3.22.1"
+
+      - name: Fix Android SDK 37 platform path
+        run: |
+          SDK_PLATFORMS="$ANDROID_HOME/platforms"
+          ln -sfn android-37.0 "$SDK_PLATFORMS/android-37"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
+
+      - name: Build and lint GMS universal debug APK
+        working-directory: KeuMusicApp
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --console=plain assembleGmsMobileUniversalDebug :app:lintGmsMobileUniversalDebug --warning-mode summary
+        env:
+          GITHUB_EVENT_NAME: push
+          PULL_REQUEST: "true"
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
+          CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
+          EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeuMusic-PR10-debug-APK
+          path: |
+            KeuMusicApp/app/build/outputs/apk/gms/mobile/universal/debug/*.apk
+            KeuMusicApp/app/build/outputs/apk/gmsMobileUniversal/debug/*.apk
+            KeuMusicApp/app/build/outputs/apk/mobile/universal/debug/*.apk
+            KeuMusicApp/app/build/outputs/apk/mobileUniversal/debug/*.apk
+          if-no-files-found: error
