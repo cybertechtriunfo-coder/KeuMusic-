@@ -238,7 +238,7 @@ fun ScaffoldShell(
                         )
 
                         if (keuMusicAiEnabled && contentMounted && splashDone) {
-                            KeuMusicAiOverlay()
+                            KeuMusicAiOverlay(playerViewModel)
                         }
                     }
                 }
