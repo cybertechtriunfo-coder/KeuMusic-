@@ -1,9 +1,18 @@
+/*
+ * KeuMusic AI | Experimental hands-free voice assistant
+ */
 package moe.rukamori.archivetune.ui.ai
 
-import android.app.Activity
-import android.content.ActivityNotFoundException
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,7 +24,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -23,15 +34,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
 import java.text.Normalizer
 import java.util.Locale
 
@@ -40,56 +55,201 @@ private data class KeuMusicAiLine(val author: String, val message: String)
 @Composable
 fun KeuMusicAiConversation(
     onSpeakingChanged: (Boolean) -> Unit,
+    onPlayNext: () -> Unit,
+    onPlayPrevious: () -> Unit,
+    onPausePlayback: () -> Unit,
+    onResumePlayback: () -> Unit,
+    onVoiceSearch: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
     var input by rememberSaveable { mutableStateOf("") }
     var voiceReady by remember { mutableStateOf(false) }
-    var voiceStatus by remember { mutableStateOf("Preparando a voz…") }
+    var voiceStatus by remember { mutableStateOf("Ative a escuta para conversar sem tocar no microfone.") }
+    var permissionGranted by remember {
+        mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+    }
+    var handsFreeEnabled by rememberSaveable { mutableStateOf(false) }
+    var waitingForCommand by rememberSaveable { mutableStateOf(false) }
+    var restartSignal by remember { mutableIntStateOf(0) }
     val conversation = remember {
-        mutableStateListOf(
-            KeuMusicAiLine("KeuMusic", "Olá! Agora você já pode digitar ou tocar no microfone para conversar comigo."),
-        )
+        mutableStateListOf(KeuMusicAiLine("KeuMusic", "Olá! Eu sou o KeuMusic AI. Quando você me chamar, vou responder por voz."))
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        permissionGranted = granted
+        if (granted) {
+            handsFreeEnabled = true
+            voiceStatus = "Microfone autorizado • iniciando escuta automática"
+        } else {
+            handsFreeEnabled = false
+            voiceStatus = "Permissão de microfone não concedida. Você pode ativá-la nas configurações do app."
+        }
     }
 
     val tts = remember(context) {
         TextToSpeech(context) { result ->
             voiceReady = result == TextToSpeech.SUCCESS
-            voiceStatus = if (result == TextToSpeech.SUCCESS) {
-                "Voz do Android • português brasileiro"
-            } else {
-                "Mecanismo de voz indisponível neste aparelho"
-            }
+            voiceStatus = if (result == TextToSpeech.SUCCESS) "Voz do Android • português brasileiro" else "Voz indisponível neste aparelho"
         }
     }
 
     LaunchedEffect(voiceReady) {
         if (voiceReady) {
-            val brazilianPortuguese = Locale("pt", "BR")
-            val languageResult = tts.setLanguage(brazilianPortuguese)
+            val result = tts.setLanguage(Locale("pt", "BR"))
             tts.setSpeechRate(0.96f)
             tts.setPitch(1.04f)
-            if (languageResult == TextToSpeech.LANG_MISSING_DATA ||
-                languageResult == TextToSpeech.LANG_NOT_SUPPORTED
-            ) {
-                voiceStatus = "Instale uma voz em português brasileiro nas configurações do Android"
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 voiceReady = false
+                voiceStatus = "Instale uma voz em português brasileiro nas configurações do Android."
             }
         }
     }
 
+    val recognizer = remember(context) {
+        when {
+            !SpeechRecognizer.isRecognitionAvailable(context) -> null
+            Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(context) ->
+                SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            else -> SpeechRecognizer.createSpeechRecognizer(context)
+        }
+    }
+    val recognitionIntent = remember {
+        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+        }
+    }
+
+    fun normalized(value: String): String =
+        Normalizer.normalize(value.lowercase(Locale("pt", "BR")), Normalizer.Form.NFD)
+            .replace("\\p{Mn}+".toRegex(), "")
+            .replace("[^a-z0-9 ]".toRegex(), " ")
+            .replace("\\s+".toRegex(), " ")
+            .trim()
+
+    fun speak(answer: String) {
+        conversation.add(KeuMusicAiLine("KeuMusic", answer))
+        while (conversation.size > 12) conversation.removeAt(0)
+        if (voiceReady) {
+            tts.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "keumusic-ai-${System.currentTimeMillis()}")
+        } else {
+            voiceStatus = answer
+            restartSignal++
+        }
+    }
+
+    fun processCommand(rawCommand: String) {
+        val command = normalized(rawCommand)
+        waitingForCommand = false
+        when {
+            listOf("proxima", "troca de musica", "trocar musica", "outra musica", "passa a musica", "pula a musica", "avanca").any(command::contains) -> {
+                onPlayNext()
+                speak(listOf("Beleza! Vamos para a próxima.", "Pode deixar, já estou trocando.", "Pronto! Próxima música na área.").random())
+            }
+            listOf("musica anterior", "volta a musica", "voltar musica", "faixa anterior", "volta uma").any(command::contains) -> {
+                onPlayPrevious()
+                speak("Claro! Voltando para a música anterior.")
+            }
+            listOf("pausa", "pausar", "para a musica", "parar musica", "pode parar").any(command::contains) -> {
+                onPausePlayback()
+                speak("Tudo bem, pausei a música.")
+            }
+            listOf("continua", "continuar", "retoma", "retomar", "volta a tocar", "pode tocar").any(command::contains) -> {
+                onResumePlayback()
+                speak("Pronto! A música está tocando novamente.")
+            }
+            command.startsWith("toca ") || command.startsWith("coloca ") ||
+                command.startsWith("quero ouvir ") || command.startsWith("reproduz ") ||
+                command.startsWith("toque ") -> {
+                val query = command
+                    .replace(Regex("^(toca|toque|coloca|reproduz|quero ouvir)\\s+"), "")
+                    .replace(Regex("^(uma musica|musica|o album|album)\\s+"), "")
+                    .trim()
+                if (query.isNotBlank()) {
+                    onVoiceSearch(query)
+                    speak("Certo! Vou procurar $query para você.")
+                } else {
+                    waitingForCommand = true
+                    speak("Qual música ou artista você quer ouvir?")
+                }
+            }
+            command.contains("quem criou") || command.contains("seu criador") ->
+                speak("Fui criado por Cleudeson Soares, idealizador do KeuMusic e criador do KeuMusic AI.")
+            command.contains("roleta") || command.contains("roll") ->
+                speak("A roleta musical está no KeuMusic. Você pode abrir a área da roleta e girar para sortear uma música.")
+            command.contains("playlist") ->
+                speak("As playlists ajudam você a organizar suas músicas favoritas. Abra a área de playlists para acessar suas listas.")
+            command.contains("album") || command.contains("albuns") ->
+                speak("Você pode explorar seus álbuns na área de álbuns do KeuMusic.")
+            command.contains("tudo bem") || command == "oi" || command == "ola" ->
+                speak(listOf("Tudo ótimo! E com você?", "Opa! Tudo tranquilo por aqui. E aí?", "Estou bem e pronto para escolher uma música com você.").random())
+            else ->
+                speak("Entendi. Ainda estou aprendendo novas funções, mas já posso ajudar com a reprodução e a busca de músicas.")
+        }
+    }
+
+    fun handleTranscript(transcript: String) {
+        if (transcript.isBlank()) {
+            restartSignal++
+            return
+        }
+        conversation.add(KeuMusicAiLine("Você", transcript))
+        while (conversation.size > 12) conversation.removeAt(0)
+        val text = normalized(transcript)
+        if (waitingForCommand) {
+            processCommand(transcript)
+            return
+        }
+
+        val wakePhrases = listOf(
+            "keu music", "queu music", "q music", "keu musick", "keu musiq",
+            "oi keu", "ola keu", "e ai keu", "bom dia keu", "boa tarde keu", "boa noite keu",
+        )
+        val wakePhrase = wakePhrases.firstOrNull(text::contains)
+        if (wakePhrase == null) {
+            voiceStatus = "Aguardando: diga Oi, KeuMusic ou E aí, KeuMusic."
+            restartSignal++
+            return
+        }
+
+        var remainder = text.replace(wakePhrase, " ").trim()
+        remainder = remainder.replace(
+            Regex("^(oi|ola|e ai|bom dia|boa tarde|boa noite|tudo bem)\\s*"),
+            "",
+        ).trim()
+        if (remainder.isNotBlank()) {
+            processCommand(remainder)
+        } else {
+            waitingForCommand = true
+            speak(listOf(
+                "Oi! Estou aqui. O que vamos ouvir?",
+                "E aí! Tudo tranquilo? Pode falar.",
+                "Olá! Estou ouvindo. O que você precisa?",
+                "Opa! Manda ver, estou aqui.",
+                "Bom te ouvir! Qual é o pedido de hoje?",
+            ).random())
+        }
+    }
+
+    val latestTranscriptHandler by rememberUpdatedState<(String) -> Unit> { handleTranscript(it) }
+    val latestHandsFreeEnabled by rememberUpdatedState(handsFreeEnabled)
+    val latestPermissionGranted by rememberUpdatedState(permissionGranted)
+
     DisposableEffect(tts) {
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {
-                onSpeakingChanged(true)
-            }
-
+            override fun onStart(utteranceId: String?) { onSpeakingChanged(true) }
             override fun onDone(utteranceId: String?) {
                 onSpeakingChanged(false)
+                if (latestHandsFreeEnabled) restartSignal++
             }
-
             @Deprecated("Deprecated in Android API")
             override fun onError(utteranceId: String?) {
                 onSpeakingChanged(false)
+                if (latestHandsFreeEnabled) restartSignal++
             }
         })
         onDispose {
@@ -99,63 +259,52 @@ fun KeuMusicAiConversation(
         }
     }
 
-    val speechLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        val recognized = if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+    DisposableEffect(recognizer) {
+        if (recognizer == null) {
+            voiceStatus = "Reconhecimento de voz indisponível neste aparelho."
         } else {
-            null
+            recognizer.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {
+                    voiceStatus = if (waitingForCommand) "Pode falar, estou ouvindo seu pedido." else "Escutando a chamada KeuMusic."
+                }
+                override fun onBeginningOfSpeech() { voiceStatus = "Estou ouvindo..." }
+                override fun onRmsChanged(rmsdB: Float) = Unit
+                override fun onBufferReceived(buffer: ByteArray?) = Unit
+                override fun onEndOfSpeech() { voiceStatus = "Entendi sua voz. Processando..." }
+                override fun onError(error: Int) {
+                    if (latestHandsFreeEnabled && latestPermissionGranted) {
+                        mainHandler.postDelayed({ runCatching { recognizer.startListening(recognitionIntent) } }, 650)
+                    }
+                }
+                override fun onResults(results: Bundle?) {
+                    val spoken = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                    if (!spoken.isNullOrBlank()) latestTranscriptHandler(spoken) else restartSignal++
+                }
+                override fun onPartialResults(partialResults: Bundle?) = Unit
+                override fun onEvent(eventType: Int, params: Bundle?) = Unit
+            })
         }
-        if (!recognized.isNullOrBlank()) {
-            input = recognized
-            voiceStatus = "Voz reconhecida • confira e toque em Enviar"
-        } else {
-            voiceStatus = "Não consegui entender. Tente falar novamente."
+        onDispose {
+            mainHandler.removeCallbacksAndMessages(null)
+            runCatching { recognizer?.cancel() }
+            recognizer?.destroy()
         }
     }
 
-    fun answerFor(question: String): String {
-        val normalized = Normalizer.normalize(question.lowercase(Locale("pt", "BR")), Normalizer.Form.NFD)
-            .replace("\\p{Mn}+".toRegex(), "")
-        return when {
-            listOf("oi", "ola", "bom dia", "boa tarde", "boa noite", "tudo bem").any(normalized::contains) ->
-                "Olá! Tudo ótimo por aqui. Sou o KeuMusic AI e estou aprendendo a conversar com você por voz."
-            normalized.contains("quem criou") || normalized.contains("seu criador") ->
-                "Fui criado por Cleudeson Soares, idealizador do KeuMusic e criador do KeuMusic AI."
-            normalized.contains("roleta") || normalized.contains("roll") ->
-                "A roleta musical escolhe uma música para você. Abra a área da roleta e toque em Girar roleta. Depois você pode escolher ouvir a música sorteada."
-            normalized.contains("playlist") ->
-                "As playlists ajudam a organizar suas músicas favoritas. Abra a área de playlists para criar ou acessar suas listas."
-            normalized.contains("album") || normalized.contains("albuns") ->
-                "Na área de álbuns você pode explorar coleções de músicas e abrir um álbum para ver suas faixas."
-            normalized.contains("telegram") || normalized.contains("suporte") || normalized.contains("contato") ->
-                "Você pode acompanhar o KeuMusic pelo Instagram qkeumusic e pelo Telegram oficial t.me/KeuMusic."
-            normalized.contains("musica") || normalized.contains("tocar") || normalized.contains("artista") ->
-                "Essa é uma das funções que vamos conectar: pesquisar músicas e controlar o player por voz. Nesta versão experimental, ainda não estou autorizado a controlar a reprodução."
-            else ->
-                "Entendi o que você disse. Minha conversa inteligente completa ainda será conectada ao serviço de IA do KeuMusic. Por enquanto, consigo responder algumas dúvidas básicas do aplicativo e falar com você."
+    LaunchedEffect(handsFreeEnabled, permissionGranted, restartSignal, recognizer) {
+        if (handsFreeEnabled && permissionGranted && recognizer != null) {
+            delay(350)
+            runCatching { recognizer.startListening(recognitionIntent) }
+                .onFailure { voiceStatus = "Não consegui iniciar a escuta. Tente desativar e ativar novamente." }
         }
     }
 
-    fun sendMessage() {
+    fun sendTypedMessage() {
         val question = input.trim()
         if (question.isEmpty()) return
         conversation.add(KeuMusicAiLine("Você", question))
-        val answer = answerFor(question)
-        conversation.add(KeuMusicAiLine("KeuMusic", answer))
-        while (conversation.size > 8) conversation.removeAt(0)
         input = ""
-        if (voiceReady) {
-            tts.speak(
-                answer,
-                TextToSpeech.QUEUE_FLUSH,
-                null,
-                "keumusic-ai-${System.currentTimeMillis()}",
-            )
-        } else {
-            voiceStatus = "Resposta exibida em texto; a voz ainda não está pronta."
-        }
+        processCommand(question)
     }
 
     Column(
@@ -168,14 +317,14 @@ fun KeuMusicAiConversation(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 112.dp),
+                .heightIn(max = 150.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            conversation.takeLast(3).forEach { line ->
+            conversation.takeLast(8).forEach { line ->
                 Text(
                     text = "${line.author}: ${line.message}",
                     color = if (line.author == "KeuMusic") Color(0xFFBDEFFF) else Color.White,
-                    maxLines = 2,
                     style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                 )
             }
@@ -184,9 +333,8 @@ fun KeuMusicAiConversation(
             value = input,
             onValueChange = { input = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Digite ou fale com o KeuMusic AI") },
+            label = { Text("Digite uma mensagem (opcional)") },
             maxLines = 2,
-            singleLine = false,
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -194,24 +342,23 @@ fun KeuMusicAiConversation(
         ) {
             Button(
                 onClick = {
-                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
-                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale com o KeuMusic AI")
-                        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                    }
-                    try {
-                        speechLauncher.launch(intent)
-                    } catch (_: ActivityNotFoundException) {
-                        voiceStatus = "Este aparelho não possui serviço de reconhecimento de voz disponível."
+                    if (!permissionGranted) permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    else {
+                        handsFreeEnabled = !handsFreeEnabled
+                        if (handsFreeEnabled) voiceStatus = "Escuta automática ativada."
+                        else {
+                            waitingForCommand = false
+                            recognizer?.cancel()
+                            voiceStatus = "Escuta automática pausada."
+                        }
                     }
                 },
                 modifier = Modifier.weight(1f),
             ) {
-                Text("Microfone")
+                Text(if (handsFreeEnabled) "Parar escuta" else "Ativar escuta")
             }
             Button(
-                onClick = { sendMessage() },
+                onClick = { sendTypedMessage() },
                 enabled = input.isNotBlank(),
                 modifier = Modifier.weight(1f),
             ) {
@@ -224,7 +371,7 @@ fun KeuMusicAiConversation(
             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
         )
         Text(
-            text = "Protótipo local: respostas de demonstração. A IA online e o controle do player ainda serão integrados.",
+            text = "Escuta experimental: prioriza reconhecimento local quando disponível. A busca e os comandos básicos usam o player do KeuMusic.",
             color = Color(0xFF8297AA),
             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
         )
