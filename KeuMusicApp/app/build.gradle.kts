@@ -307,8 +307,6 @@ val fetchSherpaOnnx by tasks.registering {
 }
 
 dependencies {
-    // Full Jarvis engine source is isolated in its own library module; KeuMusic UI remains native.
-    implementation(project(":jarvis-engine"))
     implementation(libs.media3.ui)
 
 implementation(libs.androidx.foundation.layout)
