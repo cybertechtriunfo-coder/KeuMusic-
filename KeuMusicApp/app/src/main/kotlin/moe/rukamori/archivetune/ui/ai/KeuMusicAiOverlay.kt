@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -198,8 +199,8 @@ fun KeuMusicAiOverlay() {
                         detectDragGestures(
                             onDrag = { change, dragAmount ->
                                 change.consume()
-                                avatarX = (startX + dragAmount.x).coerceIn(0f, (maxWidthPx - avatarSizePx).coerceAtLeast(0f))
-                                avatarY = (startY + dragAmount.y).coerceIn(0f, (maxHeightPx - avatarSizePx).coerceAtLeast(0f))
+                                avatarX = ((if (avatarX.isNaN()) startX else avatarX) + dragAmount.x).coerceIn(0f, (maxWidthPx - avatarSizePx).coerceAtLeast(0f))
+                                avatarY = ((if (avatarY.isNaN()) startY else avatarY) + dragAmount.y).coerceIn(0f, (maxHeightPx - avatarSizePx).coerceAtLeast(0f))
                             },
                         )
                     }
