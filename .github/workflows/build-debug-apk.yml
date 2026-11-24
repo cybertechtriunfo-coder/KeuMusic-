@@ -8,6 +8,7 @@ on:
       - feature/video-autoplay-queue-20261124
       - keumusic-oficial-1.0
       - feature/keumusic-ai-lab-20261124
+      - feature/keumusic-ai-jarvis-engine-20261124
   workflow_dispatch:
 
 permissions:
