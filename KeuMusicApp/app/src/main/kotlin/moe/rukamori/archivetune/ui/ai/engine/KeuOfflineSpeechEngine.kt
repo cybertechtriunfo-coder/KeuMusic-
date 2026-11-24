@@ -137,7 +137,14 @@ class KeuOfflineSpeechEngine(private val context: Context) {
                     else -> null
                 } ?: continue
                 val target = File(staging, targetName)
-                FileOutputStream(target).use { tar.copyTo(it) }
+                FileOutputStream(target).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = tar.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
             }
         }
         archive.delete()
