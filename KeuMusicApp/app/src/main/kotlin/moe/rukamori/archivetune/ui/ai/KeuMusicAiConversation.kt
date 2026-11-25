@@ -72,6 +72,9 @@ fun KeuMusicAiConversation(
     var memoryEnabled by rememberSaveable {
         mutableStateOf(context.getSharedPreferences("keumusic_ai_private_memory", android.content.Context.MODE_PRIVATE).getBoolean("memory_enabled", false))
     }
+    var profileName by rememberSaveable {
+        mutableStateOf(KeuUserProfileMemory.loadName(context))
+    }
     var waitingForCommand by rememberSaveable { mutableStateOf(false) }
     val voiceEngine = remember(context) { KeuOfflineSpeechEngine(context) }
     val ttsEngine = remember(context) { KeuOfflineTtsEngine(context) }
@@ -249,8 +252,15 @@ fun KeuMusicAiConversation(
                 speak("As playlists ajudam você a organizar suas músicas favoritas. Abra a área de playlists para acessar suas listas.")
             command.contains("album") || command.contains("albuns") ->
                 speak("Você pode explorar seus álbuns na área de álbuns do KeuMusic.")
-            command.contains("tudo bem") || command == "oi" || command == "ola" ->
-                speak(listOf("Tudo ótimo! E com você?", "Opa! Tudo tranquilo por aqui. E aí?", "Estou bem e pronto para escolher uma música com você.").random())
+            command.contains("tudo bem") || command == "oi" || command == "ola" -> {
+                val name = KeuUserProfileMemory.loadName(context)
+                val greeting = if (name.isNotBlank()) {
+                    listOf("Tudo ótimo, $name! E com você?", "Opa, $name! Tudo tranquilo por aqui.", "Estou bem, $name, e pronto para escolher uma música com você.").random()
+                } else {
+                    listOf("Tudo ótimo! E com você?", "Opa! Tudo tranquilo por aqui. E aí?", "Estou bem e pronto para escolher uma música com você.").random()
+                }
+                speak(greeting)
+            }
             else ->
                 askKeuMusicAi(rawCommand)
         }
@@ -289,13 +299,24 @@ fun KeuMusicAiConversation(
             processCommand(remainder)
         } else {
             waitingForCommand = true
-            speak(listOf(
-                "Oi! Estou aqui. O que vamos ouvir?",
-                "E aí! Tudo tranquilo? Pode falar.",
-                "Olá! Estou ouvindo. O que você precisa?",
-                "Opa! Manda ver, estou aqui.",
-                "Bom te ouvir! Qual é o pedido de hoje?",
-            ).random())
+            val name = KeuUserProfileMemory.loadName(context)
+            val greetings = if (name.isNotBlank()) {
+                listOf(
+                    "Oi, $name! Estou aqui. O que vamos ouvir?",
+                    "E aí, $name! Tudo tranquilo? Pode falar.",
+                    "Olá, $name! Estou ouvindo. O que você precisa?",
+                    "Opa, $name! Manda ver, estou aqui.",
+                )
+            } else {
+                listOf(
+                    "Oi! Estou aqui. O que vamos ouvir?",
+                    "E aí! Tudo tranquilo? Pode falar.",
+                    "Olá! Estou ouvindo. O que você precisa?",
+                    "Opa! Manda ver, estou aqui.",
+                    "Bom te ouvir! Qual é o pedido de hoje?",
+                )
+            }
+            speak(greetings.random())
         }
     }
 
@@ -370,6 +391,49 @@ fun KeuMusicAiConversation(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Digite uma mensagem (opcional)") },
             maxLines = 2,
+        )
+        OutlinedTextField(
+            value = profileName,
+            onValueChange = { profileName = it.take(60) },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Como posso chamar você?") },
+            singleLine = true,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(
+                onClick = {
+                    val safeName = profileName.trim()
+                    if (safeName.isNotBlank()) {
+                        KeuUserProfileMemory.saveName(context, safeName)
+                        profileName = safeName
+                        voiceStatus = "Nome salvo neste aparelho. Não é enviado ao provedor de IA."
+                    } else {
+                        voiceStatus = "Digite um nome antes de salvar."
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                enabled = profileName.isNotBlank(),
+            ) {
+                Text("Salvar meu nome")
+            }
+            Button(
+                onClick = {
+                    KeuUserProfileMemory.clear(context)
+                    profileName = ""
+                    voiceStatus = "Nome salvo apagado do perfil local."
+                },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Apagar nome")
+            }
+        }
+        Text(
+            text = "O nome fica salvo somente neste aparelho e é usado nas saudações do Keu. Ele não é enviado ao serviço de IA.",
+            color = Color(0xFF8297AA),
+            style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
