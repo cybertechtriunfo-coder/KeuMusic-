@@ -155,7 +155,7 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
             ).padding(18.dp)
         ) {
             Column(Modifier.align(Alignment.CenterStart)) {
-                Text("KEUTUB", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                Text("KeuTube", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
                 Text("Vídeos do YouTube • Pesquise e assista", color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
             }
             Surface(
@@ -168,6 +168,24 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RadioKeuMusicTopMark(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.background(
+            Brush.linearGradient(listOf(Color(0xFF063D4B), Color(0xFF087E91), Color(0xFF172A55)))
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("K", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+        Text(
+            "♫",
+            color = Color(0xFF8CF4E8),
+            fontSize = 18.sp,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 7.dp, bottom = 5.dp),
+        )
     }
 }
 
@@ -404,7 +422,7 @@ fun RadioTopScreen(navController: NavController) {
                                         Modifier.size(54.dp).clip(RoundedCornerShape(13.dp))
                                             .background(MaterialTheme.colorScheme.surfaceVariant),
                                         contentAlignment = Alignment.Center,
-                                    ) { Text("◉", color = MaterialTheme.colorScheme.primary, fontSize = 28.sp) }
+                                    ) { RadioKeuMusicTopMark(modifier = Modifier.size(54.dp)) }
                                 }
                                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
                                     Text(station.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
