@@ -246,7 +246,7 @@ class KeuOfflineSpeechEngine(private val context: Context) {
                 // Jarvis-style adaptive gain makes quiet speech easier to detect while limiting
                 // amplification of room noise. Keep the raw RMS for voice activity detection.
                 val rawRms = micGain.process(samples)
-                val voiceThreshold = maxOf(0.006f, micGain.noiseFloor * 3.2f)
+                val voiceThreshold = maxOf(0.0015f, micGain.noiseFloor * 3.2f)
                 val voiced = rawRms > voiceThreshold
                 if (!speaking) {
                     preRoll.addLast(samples)
