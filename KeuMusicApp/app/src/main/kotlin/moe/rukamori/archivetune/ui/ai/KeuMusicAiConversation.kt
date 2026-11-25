@@ -75,7 +75,7 @@ fun KeuMusicAiConversation(
     val ttsEngine = remember(context) { KeuOfflineTtsEngine(context) }
     val conversation = remember {
         val restored = if (memoryEnabled) KeuConversationMemory.load(context) else emptyList()
-n        mutableStateListOf<KeuMusicAiLine>().apply {
+        mutableStateListOf<KeuMusicAiLine>().apply {
             if (restored.isEmpty()) add(KeuMusicAiLine("KeuMusic", "Olá! Eu sou o KeuMusic AI. Quando você me chamar, vou responder por voz."))
             else restored.forEach { add(KeuMusicAiLine(it.author, it.message)) }
         }
