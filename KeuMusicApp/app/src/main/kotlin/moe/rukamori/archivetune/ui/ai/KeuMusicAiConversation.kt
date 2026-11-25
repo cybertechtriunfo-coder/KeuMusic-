@@ -65,6 +65,8 @@ fun KeuMusicAiConversation(
     var permissionGranted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
     }
+    // Se o usuário já autorizou o microfone, a conversa por voz inicia ao abrir o Keu.
+    // Na primeira utilização, solicita a permissão automaticamente; digitação continua opcional.
     var handsFreeEnabled by rememberSaveable { mutableStateOf(false) }
     var waitingForCommand by rememberSaveable { mutableStateOf(false) }
     val voiceEngine = remember(context) { KeuOfflineSpeechEngine(context) }
@@ -80,6 +82,16 @@ fun KeuMusicAiConversation(
         } else {
             handsFreeEnabled = false
             voiceStatus = "Permissão de microfone não concedida. Você pode ativá-la nas configurações do app."
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (permissionGranted) {
+            handsFreeEnabled = true
+            voiceStatus = "Microfone autorizado • iniciando escuta automática"
+        } else {
+            voiceStatus = "O Keu precisa da permissão do microfone para conversar por voz."
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
