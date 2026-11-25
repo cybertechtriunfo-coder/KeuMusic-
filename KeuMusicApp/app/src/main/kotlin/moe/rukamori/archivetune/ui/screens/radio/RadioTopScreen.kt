@@ -126,7 +126,47 @@ fun RadioTopShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 Text("RÁDIO KEUMUSIC TOP", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
                 Text("Emissoras do Brasil • Ao vivo", color = Color.White.copy(alpha = .88f), style = MaterialTheme.typography.bodyMedium)
             }
-            Text("◉", Modifier.align(Alignment.CenterEnd), color = Color.White, style = MaterialTheme.typography.displayLarge)
+            Surface(
+                modifier = Modifier.align(Alignment.CenterEnd).size(66.dp),
+                shape = CircleShape,
+                color = Color.White.copy(alpha = 0.16f),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("K", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                    Text("♫", color = Color(0xFF8CF4E8), fontSize = 18.sp,
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 7.dp, bottom = 5.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).height(112.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+    ) {
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.linearGradient(listOf(Color(0xFF3B145D), Color(0xFFB51F54), Color(0xFF25164F)))
+            ).padding(18.dp)
+        ) {
+            Column(Modifier.align(Alignment.CenterStart)) {
+                Text("KEUTUB", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                Text("Vídeos do YouTube • Pesquise e assista", color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
+            }
+            Surface(
+                modifier = Modifier.align(Alignment.CenterEnd).size(66.dp),
+                shape = RoundedCornerShape(22.dp),
+                color = Color.White.copy(alpha = .18f),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("▶", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                }
+            }
         }
     }
 }
