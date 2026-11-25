@@ -103,9 +103,9 @@ internal fun PermissionsPage(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = if (keuAiEnabled) {
-                                "Ativada: o Keu aparecerá para dar as boas-vindas ao concluir a configuração."
+                                "Ativada: o avatar do Keu aparecerá e dará as boas-vindas por voz ao concluir a configuração. O microfone só será solicitado quando você ativar a escuta."
                             } else {
-                                "Ative para receber as boas-vindas do assistente holográfico. Você também pode ativar depois nas configurações."
+                                "Ative para receber as boas-vindas por voz do assistente holográfico. A escuta por palavra-chave é opcional e o microfone só será solicitado quando você a ativar. Você também pode ativar depois nas configurações."
                             },
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = LocalArchiveTuneFontFamily.current,
