@@ -36,7 +36,6 @@ class OnboardingRepository
                 buildList {
                     add(runtimePermissionData(OnboardingPermissionId.NOTIFICATIONS, notificationPermission()))
                     add(runtimePermissionData(OnboardingPermissionId.LOCAL_AUDIO, localAudioPermission()))
-                    add(runtimePermissionData(OnboardingPermissionId.MICROPHONE, Manifest.permission.RECORD_AUDIO))
                     add(runtimePermissionData(OnboardingPermissionId.BLUETOOTH_CONNECT, bluetoothConnectPermission()))
                     add(installGrantedData(OnboardingPermissionId.NETWORK))
                     add(installGrantedData(OnboardingPermissionId.PLAYBACK_SERVICE))
