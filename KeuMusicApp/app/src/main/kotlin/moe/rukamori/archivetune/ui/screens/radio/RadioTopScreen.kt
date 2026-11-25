@@ -101,10 +101,10 @@ private fun normalizedRadioName(value: String): String =
 private fun radioCity(name: String): String? {
     val value = normalizedRadioName(name)
     return when {
-        listOf("trindade fm", "boas novas trindade", "trindade mania", "pop brasil fm", "mova fm trindade", "paulista fm", "de olho no social", "mais oeste", "metamorfose fm", "89 fm a radio rock", "89 fm radio rock").any(value::contains) -> "Trindade"
-        listOf("nova bethel", "planalto fm", "primavera fm", "astral mix", "celestial gospel", "cristiano neves", "rap 62", "jesus e o caminho", "nova radio progresso", "cidade polo", "garavelo", "alianca divina", "canal felicidade", "radio aparecida", "roveg").any(value::contains) -> "Aparecida de Goiânia"
-        listOf("105 7 fm", "105.7 fm", "96 fm", "amor fm", "gazeta anapolis", "imprensa anapolis", "radio imprensa", "mais 87 9", "manchester fm", "nova fm anapolis", "rede aleluia anapolis", "sao francisco", "voz do coracao imaculado", "cerrado mix", "kairos de anapolis", "jovem news").any(value::contains) -> "Anápolis"
-        listOf("interativa", "terra fm", "alpha fm", "positiva", "bandnews", "vinha fm", "jovem pan", "cbn", "bandeirantes", "sucesso fm", "executiva", "paz fm", "99 5 fm", "brahma fm", "bons ventos", "fonte fm", "difusora goiania", "rbc fm", "sara brasil", "metropolitana fm", "moov fm", "mix fm goiania", "serra dourada").any(value::contains) -> "Goiânia"
+        listOf("trindade fm", "boas novas trindade", "trindade mania", "pop brasil fm", "mova fm trindade", "paulista fm", "de olho no social", "mais oeste", "metamorfose fm", "89 fm a radio rock", "89 fm radio rock").any { value.contains(it) } -> "Trindade"
+        listOf("nova bethel", "planalto fm", "primavera fm", "astral mix", "celestial gospel", "cristiano neves", "rap 62", "jesus e o caminho", "nova radio progresso", "cidade polo", "garavelo", "alianca divina", "canal felicidade", "radio aparecida", "roveg").any { value.contains(it) } -> "Aparecida de Goiânia"
+        listOf("105 7 fm", "105.7 fm", "96 fm", "amor fm", "gazeta anapolis", "imprensa anapolis", "radio imprensa", "mais 87 9", "manchester fm", "nova fm anapolis", "rede aleluia anapolis", "sao francisco", "voz do coracao imaculado", "cerrado mix", "kairos de anapolis", "jovem news").any { value.contains(it) } -> "Anápolis"
+        listOf("interativa", "terra fm", "alpha fm", "positiva", "bandnews", "vinha fm", "jovem pan", "cbn", "bandeirantes", "sucesso fm", "executiva", "paz fm", "99 5 fm", "brahma fm", "bons ventos", "fonte fm", "difusora goiania", "rbc fm", "sara brasil", "metropolitana fm", "moov fm", "mix fm goiania", "serra dourada").any { value.contains(it) } -> "Goiânia"
         else -> null
     }
 }
@@ -313,7 +313,7 @@ fun RadioTopScreen(navController: NavController) {
                     }
                     DropdownMenu(expanded = stateMenu, onDismissRequest = { stateMenu = false }) {
                         brazilStates.forEach { state ->
-                            DropdownMenuItem(text = { Text(state) }, onClick = { selectedState = state; stateMenu = false })
+                            DropdownMenuItem(text = { Text(state) }, onClick = { selectedState = state; selectedCity = "Todas as cidades"; stateMenu = false })
                         }
                     }
                 }
@@ -329,7 +329,7 @@ fun RadioTopScreen(navController: NavController) {
                     goiasCities.forEach { city ->
                         DropdownMenuItem(text = { Text(city) }, onClick = {
                             selectedCity = city
-                            if (city != "Todas as cidades") selectedState = "Goiás"
+                            selectedState = if (city == "Todas as cidades") "Todos os estados" else "Goiás"
                             cityMenu = false
                         })
                     }
