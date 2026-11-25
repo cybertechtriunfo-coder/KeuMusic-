@@ -198,6 +198,8 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                     onPausePlayback = playerViewModel::pausePlayback,
                     onResumePlayback = playerViewModel::resumePlayback,
                     onVoiceSearch = playerViewModel::playFromVoiceSearch,
+                    onToggleShuffle = playerViewModel::toggleShuffle,
+                    onToggleRepeat = playerViewModel::toggleRepeat,
                 )
             }
         } else {
