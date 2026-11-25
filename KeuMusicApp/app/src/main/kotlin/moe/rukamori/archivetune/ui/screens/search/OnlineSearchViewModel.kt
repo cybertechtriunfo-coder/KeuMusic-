@@ -60,7 +60,9 @@ class OnlineSearchViewModel
             decodeOnlineSearchQuery(
                 savedStateHandle.get<String>(OnlineSearchResultArgument).orEmpty(),
             )
-        val filter = MutableStateFlow<YouTube.SearchFilter?>(null)
+        val filter = MutableStateFlow<YouTube.SearchFilter?>(
+            if (savedStateHandle.get<String>("filter") == "video") FILTER_VIDEO else null,
+        )
         val sort = MutableStateFlow(OnlineSearchSort.DEFAULT)
         var summaryPage by mutableStateOf<SearchSummaryPage?>(null)
         val viewStateMap = mutableStateMapOf<String, ItemsPage?>()
