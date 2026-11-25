@@ -73,7 +73,7 @@ internal object KeuUserProfileMemory {
             .take(60)
 
     fun saveName(context: Context, name: String) {
-        val safeName = name.trim().take(60)
+        val safeName = name.replace(Regex("\\s+"), " ").trim().take(60)
         if (safeName.isBlank()) return
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
