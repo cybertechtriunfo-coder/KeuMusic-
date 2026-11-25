@@ -44,6 +44,8 @@ class KeuOfflineSpeechEngine(private val context: Context) {
     }
 
     private val main = Handler(Looper.getMainLooper())
+    // Adapted from Jarvis (MIT): adaptive microphone gain and noise-floor tracking.
+    private val micGain = MicGain()
     @Volatile private var running = false
     @Volatile private var released = false
     @Volatile private var outputActive = false
@@ -241,8 +243,11 @@ class KeuOfflineSpeechEngine(private val context: Context) {
                     continue
                 }
                 val samples = FloatArray(count) { frame[it] / 32768.0f }
-                val rms = sqrt(samples.sumOf { (it * it).toDouble() } / samples.size).toFloat()
-                val voiced = rms > 0.018f
+                // Jarvis-style adaptive gain makes quiet speech easier to detect while limiting
+                // amplification of room noise. Keep the raw RMS for voice activity detection.
+                val rawRms = micGain.process(samples)
+                val voiceThreshold = maxOf(0.006f, micGain.noiseFloor * 3.2f)
+                val voiced = rawRms > voiceThreshold
                 if (!speaking) {
                     preRoll.addLast(samples)
                     while (preRoll.size > 5) preRoll.removeFirst()
