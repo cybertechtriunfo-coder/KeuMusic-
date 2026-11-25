@@ -5,8 +5,6 @@ package moe.rukamori.archivetune.ui.ai
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -43,6 +41,7 @@ import java.text.Normalizer
 import java.util.Locale
 import moe.rukamori.archivetune.ai.KeuMusicAiBrain
 import moe.rukamori.archivetune.ui.ai.engine.KeuOfflineSpeechEngine
+import moe.rukamori.archivetune.ui.ai.engine.KeuOfflineTtsEngine
 
 private data class KeuMusicAiLine(val author: String, val message: String)
 
@@ -59,9 +58,9 @@ fun KeuMusicAiConversation(
     val conversationScope = rememberCoroutineScope()
     var isThinking by remember { mutableStateOf(false) }
     var input by rememberSaveable { mutableStateOf("") }
-    var ttsInitialized by remember { mutableStateOf(false) }
     var voiceReady by remember { mutableStateOf(false) }
-    var voiceStatus by remember { mutableStateOf("Ative a escuta para conversar sem tocar no microfone.") }
+    var voiceStatus by remember { mutableStateOf("Preparando a voz masculina do Keu...") }
+    var pendingSpeech by remember { mutableStateOf<String?>(null) }
     var permissionGranted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
     }
@@ -70,6 +69,7 @@ fun KeuMusicAiConversation(
     var handsFreeEnabled by rememberSaveable { mutableStateOf(false) }
     var waitingForCommand by rememberSaveable { mutableStateOf(false) }
     val voiceEngine = remember(context) { KeuOfflineSpeechEngine(context) }
+    val ttsEngine = remember(context) { KeuOfflineTtsEngine(context) }
     val conversation = remember {
         mutableStateListOf(KeuMusicAiLine("KeuMusic", "Olá! Eu sou o KeuMusic AI. Quando você me chamar, vou responder por voz."))
     }
@@ -95,34 +95,15 @@ fun KeuMusicAiConversation(
         }
     }
 
-    val tts = remember(context) {
-        TextToSpeech(context) { result ->
-            ttsInitialized = result == TextToSpeech.SUCCESS
-            if (result != TextToSpeech.SUCCESS) {
-                voiceReady = false
-                voiceStatus = "O mecanismo de voz do Android não iniciou. Verifique o mecanismo de texto para fala nas configurações."
-            }
-        }
-    }
-
-    // Só libera a fala depois que o mecanismo e o idioma estiverem realmente prontos.
-    LaunchedEffect(ttsInitialized) {
+    LaunchedEffect(ttsEngine) {
         voiceReady = false
-        if (ttsInitialized) {
-            val brazilianPortuguese = tts.setLanguage(Locale("pt", "BR"))
-            val portuguese = if (
-                brazilianPortuguese == TextToSpeech.LANG_MISSING_DATA ||
-                brazilianPortuguese == TextToSpeech.LANG_NOT_SUPPORTED
-            ) tts.setLanguage(Locale("pt")) else brazilianPortuguese
-
-            if (portuguese >= TextToSpeech.LANG_AVAILABLE) {
-                tts.setSpeechRate(0.96f)
-                tts.setPitch(1.04f)
-                voiceReady = true
-                voiceStatus = "Voz pronta • português brasileiro"
-            } else {
-                voiceStatus = "Não encontrei voz em português. Instale Português (Brasil) no mecanismo de voz do Android."
-            }
+        try {
+            ttsEngine.initialize { voiceStatus = it }
+            voiceReady = true
+            voiceStatus = "Voz masculina brasileira pronta • processamento offline"
+        } catch (error: Exception) {
+            voiceReady = false
+            voiceStatus = "Não consegui preparar a voz masculina: ${error.message ?: "erro desconhecido"}"
         }
     }
 
@@ -133,24 +114,35 @@ fun KeuMusicAiConversation(
             .replace("\\s+".toRegex(), " ")
             .trim()
 
+    fun playAnswer(answer: String) {
+        conversationScope.launch {
+            ttsEngine.speak(
+                text = answer,
+                onStart = {
+                    voiceEngine.setOutputActive(true)
+                    onSpeakingChanged(true)
+                },
+                onDone = {
+                    voiceEngine.setOutputActive(false)
+                    onSpeakingChanged(false)
+                },
+                onError = { message ->
+                    voiceEngine.setOutputActive(false)
+                    onSpeakingChanged(false)
+                    voiceStatus = "Falha na voz masculina: $message"
+                },
+            )
+        }
+    }
+
     fun speak(answer: String) {
         conversation.add(KeuMusicAiLine("KeuMusic", answer))
         while (conversation.size > 12) conversation.removeAt(0)
         if (voiceReady) {
-            val result = tts.speak(
-                answer,
-                TextToSpeech.QUEUE_FLUSH,
-                null,
-                "keumusic-ai-${System.currentTimeMillis()}",
-            )
-            if (result == TextToSpeech.ERROR) {
-                voiceStatus = "O mecanismo de voz recusou a reprodução. Confira a voz instalada no Android."
-                onSpeakingChanged(false)
-            }
+            playAnswer(answer)
         } else {
-            voiceStatus = "Resposta exibida, mas a voz ainda não está pronta. " +
-                "Verifique o mecanismo de texto para fala e a voz Português (Brasil) nas configurações do Android."
-
+            pendingSpeech = answer
+            voiceStatus = "Estou preparando minha voz masculina. Já vou responder."
         }
     }
 
@@ -268,32 +260,18 @@ fun KeuMusicAiConversation(
 
     val latestTranscriptHandler by rememberUpdatedState<(String) -> Unit> { handleTranscript(it) }
 
-    DisposableEffect(tts) {
-        tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) { voiceEngine.setOutputActive(true); onSpeakingChanged(true) }
-            override fun onDone(utteranceId: String?) {
-                voiceEngine.setOutputActive(false)
-                onSpeakingChanged(false)
+    LaunchedEffect(voiceReady, pendingSpeech) {
+        val queued = pendingSpeech
+        if (voiceReady && queued != null) {
+            pendingSpeech = null
+            playAnswer(queued)
+        }
+    }
 
-            }
-            @Deprecated("Deprecated in Android API")
-            override fun onError(utteranceId: String?) {
-                voiceEngine.setOutputActive(false)
-                onSpeakingChanged(false)
-                voiceStatus = "Falha ao reproduzir a voz. Confira o mecanismo TTS e o idioma Português (Brasil) do Android."
-
-            }
-            override fun onError(utteranceId: String?, errorCode: Int) {
-                voiceEngine.setOutputActive(false)
-                onSpeakingChanged(false)
-                voiceStatus = "Falha no áudio da resposta (código ${errorCode}). Verifique a voz instalada no Android."
-
-            }
-        })
+    DisposableEffect(ttsEngine) {
         onDispose {
+            ttsEngine.release()
             onSpeakingChanged(false)
-            tts.stop()
-            tts.shutdown()
         }
     }
 
