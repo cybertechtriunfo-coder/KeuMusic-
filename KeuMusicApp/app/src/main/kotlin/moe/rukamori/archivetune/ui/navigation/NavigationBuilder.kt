@@ -79,6 +79,9 @@ fun NavGraphBuilder.navigationBuilder(
     composable("radio_keumusic_top") {
         RadioTopScreen(navController)
     }
+    composable("keutub") {
+        moe.rukamori.archivetune.ui.screens.search.KeuTubScreen(navController)
+    }
     composable("local_songs") {
         LocalSongScreen(navController)
     }
@@ -152,11 +155,16 @@ fun NavGraphBuilder.navigationBuilder(
         )
     }
     composable(
-        route = OnlineSearchResultRoute,
+        route = "$OnlineSearchResultRoute?filter={filter}",
         arguments =
             listOf(
                 navArgument(OnlineSearchResultArgument) {
                     type = NavType.StringType
+                },
+                navArgument("filter") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 },
             ),
     ) {
