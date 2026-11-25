@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -105,7 +107,8 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                 modifier = Modifier
                     .fillMaxWidth(0.90f)
                     .padding(end = 14.dp, bottom = 18.dp)
-                    .heightIn(max = 640.dp)
+                    .heightIn(max = (maxHeight - 24.dp).coerceAtLeast(320.dp))
+                    .verticalScroll(rememberScrollState())
                     .clip(RoundedCornerShape(28.dp))
                     .background(
                         Brush.linearGradient(
@@ -134,24 +137,34 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                             style = MaterialTheme.typography.labelSmall,
                         )
                     }
-                    Text(
-                        text = "−",
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineMedium,
+                    Box(
                         modifier = Modifier
+                            .size(48.dp)
                             .clip(CircleShape)
-                            .clickable { expanded = false }
-                            .padding(horizontal = 12.dp, vertical = 2.dp),
-                    )
-                    Text(
-                        text = "×",
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineMedium,
+                            .background(Color.White.copy(alpha = 0.10f))
+                            .clickable { expanded = false },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "−",
+                            color = Color.White,
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
+                    }
+                    Box(
                         modifier = Modifier
+                            .size(48.dp)
                             .clip(CircleShape)
-                            .clickable { dismissed = true; expanded = false }
-                            .padding(horizontal = 10.dp, vertical = 2.dp),
-                    )
+                            .background(Color.White.copy(alpha = 0.10f))
+                            .clickable { dismissed = true; expanded = false },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "×",
+                            color = Color.White,
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
+                    }
                 }
 
                 Box(
