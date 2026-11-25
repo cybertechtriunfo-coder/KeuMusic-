@@ -5,6 +5,8 @@ package moe.rukamori.archivetune.ui.ai
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -61,6 +63,8 @@ fun KeuMusicAiConversation(
     var isThinking by remember { mutableStateOf(false) }
     var input by rememberSaveable { mutableStateOf("") }
     var voiceReady by remember { mutableStateOf(false) }
+    var systemTts by remember { mutableStateOf<TextToSpeech?>(null) }
+    var systemTtsReady by remember { mutableStateOf(false) }
     var voiceStatus by remember { mutableStateOf("Preparando a voz masculina do Keu...") }
     var pendingSpeech by remember { mutableStateOf<String?>(null) }
     var permissionGranted by remember {
@@ -78,6 +82,32 @@ fun KeuMusicAiConversation(
     var waitingForCommand by rememberSaveable { mutableStateOf(false) }
     val voiceEngine = remember(context) { KeuOfflineSpeechEngine(context) }
     val ttsEngine = remember(context) { KeuOfflineTtsEngine(context) }
+
+    // Android speech synthesis is the safety net: the assistant must still speak
+    // when the optional offline voice model cannot be downloaded or initialized.
+    DisposableEffect(context) {
+        val fallback = TextToSpeech(context) { result ->
+            if (result == TextToSpeech.SUCCESS) {
+                val languageResult = systemTts?.setLanguage(Locale("pt", "BR"))
+                    ?: TextToSpeech.LANG_NOT_SUPPORTED
+                systemTtsReady = languageResult != TextToSpeech.LANG_MISSING_DATA &&
+                    languageResult != TextToSpeech.LANG_NOT_SUPPORTED
+                if (systemTtsReady && !voiceReady) {
+                    voiceStatus = "Voz do Android pronta • voz offline pode ser preparada depois."
+                }
+            } else {
+                systemTtsReady = false
+                voiceStatus = "O mecanismo de voz do Android não iniciou."
+            }
+        }
+        systemTts = fallback
+        onDispose {
+            fallback.stop()
+            fallback.shutdown()
+            systemTts = null
+            systemTtsReady = false
+        }
+    }
     val conversation = remember {
         val restored = if (memoryEnabled) KeuConversationMemory.load(context) else emptyList()
         mutableStateListOf<KeuMusicAiLine>().apply {
@@ -146,8 +176,48 @@ fun KeuMusicAiConversation(
             .replace("\\s+".toRegex(), " ")
             .trim()
 
+    fun playSystemAnswer(answer: String) {
+        val engine = systemTts
+        if (engine == null || !systemTtsReady) {
+            voiceEngine.setOutputActive(false)
+            onSpeakingChanged(false)
+            voiceStatus = "Não há mecanismo de voz disponível. Instale ou habilite a conversão de texto em voz do Android."
+            return
+        }
+        engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {
+                voiceEngine.setOutputActive(true)
+                onSpeakingChanged(true)
+            }
+            override fun onDone(utteranceId: String?) {
+                voiceEngine.setOutputActive(false)
+                onSpeakingChanged(false)
+            }
+            override fun onError(utteranceId: String?) {
+                voiceEngine.setOutputActive(false)
+                onSpeakingChanged(false)
+                voiceStatus = "O mecanismo de voz do Android não conseguiu falar."
+            }
+        })
+        val result = engine.speak(
+            answer,
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "keu-${System.currentTimeMillis()}",
+        )
+        if (result == TextToSpeech.ERROR) {
+            voiceEngine.setOutputActive(false)
+            onSpeakingChanged(false)
+            voiceStatus = "Falha ao iniciar a voz do Android."
+        }
+    }
+
     fun playAnswer(answer: String) {
         conversationScope.launch {
+            if (!voiceReady) {
+                playSystemAnswer(answer)
+                return@launch
+            }
             try {
                 ttsEngine.speak(
                     text = answer,
@@ -162,13 +232,13 @@ fun KeuMusicAiConversation(
                     onError = { message ->
                         voiceEngine.setOutputActive(false)
                         onSpeakingChanged(false)
-                        voiceStatus = "Falha na voz masculina: $message"
+                        voiceStatus = "Voz offline indisponível ($message). Usando a voz do Android."
+                        playSystemAnswer(answer)
                     },
                 )
             } catch (error: Exception) {
-                voiceEngine.setOutputActive(false)
-                onSpeakingChanged(false)
-                voiceStatus = "Não consegui iniciar minha voz: ${error.message ?: "erro desconhecido"}"
+                voiceStatus = "Voz offline indisponível. Usando a voz do Android."
+                playSystemAnswer(answer)
             }
         }
     }
@@ -195,8 +265,19 @@ fun KeuMusicAiConversation(
                 speak(answer)
             } catch (error: Exception) {
                 isThinking = false
-                voiceStatus = "Não consegui acessar a inteligência do Keu. Confira a configuração em Integração de IA."
-                speak("Tive um problema para acessar minha inteligência agora. Verifique a configuração da Integração de IA e tente novamente.")
+                val detail = error.message.orEmpty()
+                voiceStatus = if (detail.contains("Configure um provedor", ignoreCase = true)) {
+                    "Gemini selecionado, mas falta cadastrar uma chave de API válida em Integração de IA."
+                } else {
+                    "Falha ao acessar o provedor de IA: ${detail.take(140)}"
+                }
+                speak(
+                    if (detail.contains("Configure um provedor", ignoreCase = true)) {
+                        "O Gemini está selecionado, mas ainda falta configurar uma chave de API válida. A voz e os comandos locais podem funcionar sem essa chave; para respostas inteligentes, precisamos configurar o serviço."
+                    } else {
+                        "Não consegui acessar o serviço de inteligência agora. Verifique sua conexão e a configuração do provedor de IA."
+                    },
+                )
             }
         }
     }
