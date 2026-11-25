@@ -102,6 +102,52 @@ internal object InnerTubeVideoResolver {
             }
         }
 
+        // If every client rejected the first response, refresh visitorData and playback caches
+        // once before giving up. This recovery path already exists for the music resolver and
+        // prevents stale YouTube visitor state from breaking every video in the session.
+        val previousAuthFingerprint = authState.fingerprint
+        try {
+            PlaybackAuthCoordinator.recoverFromBadStreamPlayerResponse(videoId)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            Timber.tag("KeuMusicVideo").w(error, "Playback auth recovery failed for $videoId")
+        }
+
+        val refreshedAuthState = YouTube.currentPlaybackAuthState()
+        if (refreshedAuthState.fingerprint != previousAuthFingerprint) {
+            authState = refreshedAuthState
+            val refreshedHasWebTokens = hasCompleteWebTokens(authState)
+            val recoveryClients = PlaybackClientSelector
+                .buildStreamClientOrder(PlayerStreamClient.ANDROID_VR, authState)
+                .filterNot { it == WEB_REMIX || it == VISIONOS }
+                .let { clients ->
+                    if (refreshedHasWebTokens) listOf(WEB_REMIX) + clients else clients
+                }
+                .let { clients ->
+                    val cached = lastSuccessfulVideoClient
+                    if (cached == null) clients else listOf(cached) + clients.filterNot { it == cached }
+                }
+
+            for (client in recoveryClients.take(3)) {
+                val recovered = tryClient(
+                    videoId = videoId,
+                    client = client,
+                    authState = authState,
+                    signatureTimestamp = signatureTimestamp,
+                    preferredMaxHeight = preferredMaxHeight,
+                    timeoutMs = CACHED_CLIENT_REQUEST_TIMEOUT_MS,
+                )
+                if (recovered != null) {
+                    lastSuccessfulVideoClient = client
+                    Timber.tag("KeuMusicVideo").i(
+                        "Recovered $videoId with refreshed auth and ${client.clientName} in ${SystemClock.elapsedRealtime() - resolutionStartedAt}ms",
+                    )
+                    return recovered
+                }
+            }
+        }
+
         // Web Remix is the client for which this app already has a WebView BotGuard
         // token generator. Mint a correctly paired player/GVS token only after the
         // normal client ladder has failed, avoiding a cold WebView start for videos
