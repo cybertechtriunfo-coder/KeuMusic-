@@ -245,11 +245,11 @@ fun KeuMusicAiConversation(
 
     fun speak(answer: String) {
         addConversationLine("KeuMusic", answer)
-        if (voiceReady) {
+        if (voiceReady || systemTtsReady) {
             playAnswer(answer)
         } else {
             pendingSpeech = answer
-            voiceStatus = "Estou preparando minha voz masculina. Já vou responder."
+            voiceStatus = "Estou preparando minha voz. Já vou responder assim que estiver pronta."
         }
     }
 
@@ -403,9 +403,9 @@ fun KeuMusicAiConversation(
 
     val latestTranscriptHandler by rememberUpdatedState<(String) -> Unit> { handleTranscript(it) }
 
-    LaunchedEffect(voiceReady, pendingSpeech) {
+    LaunchedEffect(voiceReady, systemTtsReady, pendingSpeech) {
         val queued = pendingSpeech
-        if (voiceReady && queued != null) {
+        if ((voiceReady || systemTtsReady) && queued != null) {
             pendingSpeech = null
             playAnswer(queued)
         }
