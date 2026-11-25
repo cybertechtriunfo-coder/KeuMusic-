@@ -1,5 +1,5 @@
 /*
- * KeuMusic | KEUTUB
+ * KeuMusic | KeuTube
  * Dedicated YouTube video discovery entry, reusing the existing video search and player.
  */
 package moe.rukamori.archivetune.ui.screens.search
