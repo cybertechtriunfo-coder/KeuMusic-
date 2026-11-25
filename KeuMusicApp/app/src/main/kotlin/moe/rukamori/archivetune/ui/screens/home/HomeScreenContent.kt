@@ -41,8 +41,6 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.MenuState
-import moe.rukamori.archivetune.ui.screens.radio.KeuTubShortcut
-import moe.rukamori.archivetune.ui.screens.radio.RadioTopShortcut
 import moe.rukamori.archivetune.ui.component.carousel.LocalHeroScrollProgress
 import moe.rukamori.archivetune.ui.scaffold.BindHeaderScroll
 import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
@@ -123,22 +121,6 @@ internal fun HomeContent(
                         .fillMaxWidth()
                         .align(Alignment.TopCenter),
                 ) {
-                    if (!isFilterActive) {
-                        item(
-                            key = "home_keumusic_shortcuts",
-                            contentType = "keumusic_shortcuts",
-                        ) {
-                            Column(modifier = Modifier.animateItem()) {
-                                RadioTopShortcut(
-                                    onClick = { navController.navigate("radio_keumusic_top") },
-                                )
-                                KeuTubShortcut(
-                                    onClick = { navController.navigate("keutub") },
-                                )
-                            }
-                        }
-                    }
-
                     if (uiState.quickPicksDisplayMode != moe.rukamori.archivetune.constants.QuickPicksDisplayMode.HERO) {
                         homeCategoryChipsSection(
                             uiState = uiState,

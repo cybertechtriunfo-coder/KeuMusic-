@@ -126,20 +126,16 @@ fun RadioTopShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 Brush.linearGradient(listOf(Color(0xFF063D4B), Color(0xFF087E91), Color(0xFF172A55)))
             ).padding(18.dp)
         ) {
-            Column(Modifier.align(Alignment.CenterStart)) {
+            Column(Modifier.align(Alignment.CenterStart).padding(end = 88.dp)) {
                 Text("RÁDIO KEUMUSIC TOP", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
                 Text("Emissoras do Brasil • Ao vivo", color = Color.White.copy(alpha = .88f), style = MaterialTheme.typography.bodyMedium)
             }
-            Surface(
-                modifier = Modifier.align(Alignment.CenterEnd).size(66.dp),
-                shape = CircleShape,
-                color = Color.White.copy(alpha = 0.16f),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Image(painter = painterResource(R.drawable.radio_keumusic_top_logo_image), contentDescription = "Rádio KeuMusic Top", modifier = Modifier.fillMaxSize().padding(3.dp), contentScale = ContentScale.Fit)
-                    
-                }
-            }
+            Image(
+                painter = painterResource(R.drawable.radio_keumusic_top_logo_image),
+                contentDescription = "Rádio KeuMusic Top",
+                modifier = Modifier.align(Alignment.CenterEnd).size(84.dp).clip(CircleShape),
+                contentScale = ContentScale.Crop,
+            )
         }
     }
 }
@@ -161,15 +157,12 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 Text("KeuTube", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
                 Text("Vídeos do YouTube • Pesquise e assista", color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
             }
-            Surface(
-                modifier = Modifier.align(Alignment.CenterEnd).size(66.dp),
-                shape = RoundedCornerShape(22.dp),
-                color = Color.White.copy(alpha = .18f),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Image(painter = painterResource(R.drawable.keutube_logo_image), contentDescription = "KeuTube", modifier = Modifier.fillMaxSize().padding(3.dp), contentScale = ContentScale.Fit)
-                }
-            }
+            Image(
+                painter = painterResource(R.drawable.keutube_logo_image),
+                contentDescription = "KeuTube",
+                modifier = Modifier.align(Alignment.CenterEnd).size(84.dp).clip(RoundedCornerShape(20.dp)),
+                contentScale = ContentScale.Crop,
+            )
         }
     }
 }
