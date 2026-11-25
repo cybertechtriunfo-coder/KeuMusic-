@@ -42,6 +42,12 @@ internal object KeuConversationMemory {
             .apply()
     }
 
+    fun append(context: Context, line: Line) {
+        val updated = load(context).toMutableList()
+        updated.add(Line(line.author.take(40), line.message.take(2_000)))
+        save(context, updated)
+    }
+
     fun clear(context: Context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
