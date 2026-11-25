@@ -37,6 +37,7 @@ import moe.rukamori.archivetune.ui.scaffold.BindHeaderScroll
 import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryScreenState
 import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryTab
 import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryViewModel
+import moe.rukamori.archivetune.ui.screens.radio.RadioTopShortcut
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -160,6 +161,15 @@ fun SearchScreen(
                 is SearchDiscoveryScreenState.Success -> {
                     when (selectedTab) {
                         SearchDiscoveryTab.EXPLORE -> {
+                            item(
+                                key = "search_radio_keumusic_top",
+                                contentType = "radio_keumusic_top",
+                            ) {
+                                RadioTopShortcut(
+                                    onClick = { navController.navigate("radio_keumusic_top") },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                             item(
                                 key = "search_explore_moods_title",
                                 contentType = "section_title",
