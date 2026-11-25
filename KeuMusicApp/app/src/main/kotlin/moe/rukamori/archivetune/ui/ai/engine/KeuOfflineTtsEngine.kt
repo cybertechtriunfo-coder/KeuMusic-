@@ -216,8 +216,16 @@ class KeuOfflineTtsEngine(private val context: Context) {
             error("O arquivo de voz foi baixado incompleto.")
         }
         if (expectedSha256 != null) {
-            val digest = MessageDigest.getInstance("SHA-256").digest(part.readBytes())
-                .joinToString("") { "%02x".format(it) }
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
             if (!digest.equals(expectedSha256, ignoreCase = true)) {
                 part.delete()
                 error("A verificação de segurança do modelo de voz falhou.")
