@@ -57,6 +57,7 @@ fun KeuMusicAiConversation(
     onVoiceSearch: (String) -> Unit,
     onToggleShuffle: () -> Unit,
     onToggleRepeat: () -> Unit,
+    startWithWelcome: Boolean = false,
 ) {
     val context = LocalContext.current
     val conversationScope = rememberCoroutineScope()
@@ -148,12 +149,10 @@ fun KeuMusicAiConversation(
     }
 
     LaunchedEffect(Unit) {
-        if (permissionGranted) {
-            handsFreeEnabled = true
-            voiceStatus = "Microfone autorizado • iniciando escuta automática"
+        voiceStatus = if (permissionGranted) {
+            "Microfone autorizado • toque em Ativar escuta para chamar o Keu."
         } else {
-            voiceStatus = "O Keu precisa da permissão do microfone para conversar por voz."
-            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            "Toque em Ativar escuta para autorizar o microfone e conversar com o Keu."
         }
     }
 
@@ -250,6 +249,16 @@ fun KeuMusicAiConversation(
         } else {
             pendingSpeech = answer
             voiceStatus = "Estou preparando minha voz. Já vou responder assim que estiver pronta."
+        }
+    }
+
+    LaunchedEffect(startWithWelcome) {
+        if (startWithWelcome) {
+            speak(
+                "Olá! Eu sou o KeuMusic, mas pode me chamar de Keu. Fui criado por Cleudeson Soares. " +
+                    "Estou aqui para conversar com você, ajudar a encontrar músicas e controlar a reprodução " +
+                    "dentro do KeuMusic. Quando quiser falar comigo, toque em Ativar escuta e diga: Oi, Keu."
+            )
         }
     }
 
