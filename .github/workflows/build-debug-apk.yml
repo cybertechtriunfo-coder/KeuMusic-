@@ -10,6 +10,7 @@ on:
       - feature/keumusic-ai-lab-20261124
       - feature/keumusic-ai-jarvis-engine-20261124
       - feature/keumusic-ai-ptbr-voice-prep-20261124
+      - feature/keumusic-full-jarvis-port-20261125
   workflow_dispatch:
 
 permissions:
