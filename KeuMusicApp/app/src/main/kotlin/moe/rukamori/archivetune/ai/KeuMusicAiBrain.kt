@@ -40,10 +40,10 @@ object KeuMusicAiBrain {
             throw AiServiceException("Configure um provedor de IA em Integração de IA.")
         }
 
-        val history = recentHistory.takeLast(8).joinToString("\\n")
+        val history = recentHistory.takeLast(8).joinToString("\n")
         val prompt = buildString {
-            append("Conversa recente:\\n")
-            if (history.isNotBlank()) append(history).append("\\n")
+            append("Conversa recente:\n")
+            if (history.isNotBlank()) append(history).append("\n")
             append("Usuário: ").append(question)
         }
         AiTextService.complete(
