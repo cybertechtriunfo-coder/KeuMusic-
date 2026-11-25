@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.KeuMusicAiEnabledKey
 import moe.rukamori.archivetune.onboarding.OnboardingPermissionAction
 import moe.rukamori.archivetune.onboarding.OnboardingPermissionStatus
 import moe.rukamori.archivetune.onboarding.OnboardingPermissionUiModel
@@ -51,6 +53,7 @@ import moe.rukamori.archivetune.ui.theme.YumaSegmentPosition
 import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.theme.yumaSegmentPosition
+import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
 internal fun PermissionsPage(
@@ -60,6 +63,7 @@ internal fun PermissionsPage(
 ) {
     val page = uiState.pages[pageIndex]
     val expressiveShapes = rememberExpressiveShapes()
+    val (keuAiEnabled, setKeuAiEnabled) = rememberPreference(KeuMusicAiEnabledKey, false)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -73,6 +77,47 @@ internal fun PermissionsPage(
                 titleResId = page.titleResId,
                 subtitleResId = page.subtitleResId,
             )
+        }
+        item(key = "keumusic_ai_integration", contentType = "integration") {
+            Surface(
+                modifier = Modifier
+                    .widthIn(max = OnboardingContentMaxWidth)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f),
+                tonalElevation = 2.dp,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Integração KeuMusic IA",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontFamily = LocalArchiveTuneFontFamily.current,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (keuAiEnabled) {
+                                "Ativada: o Keu aparecerá para dar as boas-vindas ao concluir a configuração."
+                            } else {
+                                "Ative para receber as boas-vindas do assistente holográfico. Você também pode ativar depois nas configurações."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = LocalArchiveTuneFontFamily.current,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = keuAiEnabled,
+                        onCheckedChange = setKeuAiEnabled,
+                    )
+                }
+            }
         }
         item(key = "permissions_group", contentType = "permissions_group") {
             val count = uiState.permissions.size
