@@ -38,6 +38,7 @@ import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryScreenState
 import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryTab
 import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryViewModel
 import moe.rukamori.archivetune.ui.screens.radio.RadioTopShortcut
+import moe.rukamori.archivetune.ui.screens.radio.KeuTubShortcut
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -167,6 +168,15 @@ fun SearchScreen(
                             ) {
                                 RadioTopShortcut(
                                     onClick = { navController.navigate("radio_keumusic_top") },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                            item(
+                                key = "search_keutub_shortcut",
+                                contentType = "keutub_shortcut",
+                            ) {
+                                KeuTubShortcut(
+                                    onClick = { navController.navigate("keutub") },
                                     modifier = Modifier.animateItem(),
                                 )
                             }
