@@ -65,6 +65,7 @@ import androidx.media3.common.Player
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.Normalizer
 
 private data class RadioStation(
     val id: String,
@@ -72,6 +73,7 @@ private data class RadioStation(
     val stream: String,
     val logo: String?,
     val state: String,
+    val city: String?,
     val genre: String,
     val clicks: Long,
 )
@@ -84,6 +86,28 @@ private val brazilStates = listOf(
     "Rio Grande do Sul", "Rondônia", "Roraima", "Santa Catarina", "São Paulo",
     "Sergipe", "Tocantins"
 )
+
+private val goiasCities = listOf(
+    "Todas as cidades", "Goiânia", "Aparecida de Goiânia", "Trindade", "Anápolis"
+)
+
+private fun normalizedRadioName(value: String): String =
+    Normalizer.normalize(value.lowercase(), Normalizer.Form.NFD)
+        .replace("\\p{Mn}+".toRegex(), "")
+        .replace("[^a-z0-9 ]".toRegex(), " ")
+        .replace("\\s+".toRegex(), " ")
+        .trim()
+
+private fun radioCity(name: String): String? {
+    val value = normalizedRadioName(name)
+    return when {
+        listOf("trindade fm", "boas novas trindade", "trindade mania", "pop brasil fm", "mova fm trindade", "paulista fm", "de olho no social", "mais oeste", "metamorfose fm", "89 fm a radio rock", "89 fm radio rock").any(value::contains) -> "Trindade"
+        listOf("nova bethel", "planalto fm", "primavera fm", "astral mix", "celestial gospel", "cristiano neves", "rap 62", "jesus e o caminho", "nova radio progresso", "cidade polo", "garavelo", "alianca divina", "canal felicidade", "radio aparecida", "roveg").any(value::contains) -> "Aparecida de Goiânia"
+        listOf("105 7 fm", "105.7 fm", "96 fm", "amor fm", "gazeta anapolis", "imprensa anapolis", "radio imprensa", "mais 87 9", "manchester fm", "nova fm anapolis", "rede aleluia anapolis", "sao francisco", "voz do coracao imaculado", "cerrado mix", "kairos de anapolis", "jovem news").any(value::contains) -> "Anápolis"
+        listOf("interativa", "terra fm", "alpha fm", "positiva", "bandnews", "vinha fm", "jovem pan", "cbn", "bandeirantes", "sucesso fm", "executiva", "paz fm", "99 5 fm", "brahma fm", "bons ventos", "fonte fm", "difusora goiania", "rbc fm", "sara brasil", "metropolitana fm", "moov fm", "mix fm goiania", "serra dourada").any(value::contains) -> "Goiânia"
+        else -> null
+    }
+}
 
 @Composable
 fun RadioTopShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -116,6 +140,8 @@ fun RadioTopScreen(navController: NavController) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedState by remember { mutableStateOf("Todos os estados") }
+    var selectedCity by remember { mutableStateOf("Todas as cidades") }
+    var cityMenu by remember { mutableStateOf(false) }
     var stateMenu by remember { mutableStateOf(false) }
     var popularOnly by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
@@ -160,6 +186,7 @@ fun RadioTopScreen(navController: NavController) {
                                 stream = stream,
                                 logo = item.optString("favicon").takeIf { it.startsWith("http") },
                                 state = item.optString("state").trim(),
+                                city = radioCity(name),
                                 genre = item.optString("tags").split(",").firstOrNull()?.trim().orEmpty(),
                                 clicks = item.optLong("clickcount"),
                             ))
@@ -176,7 +203,8 @@ fun RadioTopScreen(navController: NavController) {
 
     val filtered = remember(stations, selectedState, popularOnly, searchQuery) {
         stations.filter { station ->
-            (selectedState == "Todos os estados" || station.state.contains(selectedState, true)) &&
+            (selectedState == "Todos os estados" || station.state.contains(selectedState, true) || (selectedState == "Goiás" && station.city != null)) &&
+                (selectedCity == "Todas as cidades" || station.city == selectedCity) &&
                 (searchQuery.isBlank() || station.name.contains(searchQuery.trim(), true))
         }.let { list ->
             if (popularOnly) list.sortedByDescending { it.clicks } else list.sortedBy { it.name.lowercase() }
@@ -190,7 +218,7 @@ fun RadioTopScreen(navController: NavController) {
                 .setUri(radio.stream)
                 .setMediaMetadata(MediaMetadata.Builder()
                     .setTitle(radio.name)
-                    .setArtist(listOf(radio.state, radio.genre).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "Rádio ao vivo" })
+                    .setArtist(listOf(radio.city ?: radio.state, radio.genre).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "Rádio ao vivo" })
                     .setArtworkUri(radio.logo?.let(Uri::parse))
                     .build())
                 .build()
@@ -233,7 +261,7 @@ fun RadioTopScreen(navController: NavController) {
             }
             Spacer(Modifier.height(28.dp))
             Text(station.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(listOf(station.state, station.genre).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "Rádio brasileira" },
+            Text(listOf(station.city ?: station.state, station.genre).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "Rádio brasileira" },
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(16.dp))
             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = CircleShape) {
@@ -291,6 +319,21 @@ fun RadioTopScreen(navController: NavController) {
                 }
                 Button(onClick = { popularOnly = true }) { Text("Mais ouvidas") }
                 OutlinedButton(onClick = { popularOnly = false }) { Text("Todas") }
+            }
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { cityMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Cidade: $selectedCity", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                DropdownMenu(expanded = cityMenu, onDismissRequest = { cityMenu = false }) {
+                    goiasCities.forEach { city ->
+                        DropdownMenuItem(text = { Text(city) }, onClick = {
+                            selectedCity = city
+                            if (city != "Todas as cidades") selectedState = "Goiás"
+                            cityMenu = false
+                        })
+                    }
+                }
             }
             Spacer(Modifier.height(10.dp))
             when {
