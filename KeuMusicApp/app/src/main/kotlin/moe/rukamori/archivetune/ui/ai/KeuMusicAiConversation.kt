@@ -407,9 +407,10 @@ fun KeuMusicAiConversation(
             "keu", "queu",
         )
         val wakePhrase = wakePhrases.firstOrNull(text::contains)
+        // Hands-free mode is explicitly enabled by the user, so accept ordinary speech too.
+        // The wake phrase remains optional; this avoids silently discarding natural questions.
         if (wakePhrase == null) {
-            voiceStatus = "Aguardando: diga Oi, KeuMusic ou E aí, KeuMusic."
-
+            processCommand(transcript)
             return
         }
 
