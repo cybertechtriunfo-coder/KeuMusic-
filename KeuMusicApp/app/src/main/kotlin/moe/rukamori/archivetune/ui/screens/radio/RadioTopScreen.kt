@@ -136,7 +136,7 @@ fun RadioTopShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 color = Color.White.copy(alpha = 0.16f),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Image(painter = painterResource(R.drawable.radio_keumusic_top_logo), contentDescription = "Rádio KeuMusic Top", modifier = Modifier.fillMaxSize().padding(3.dp), contentScale = ContentScale.Fit)
+                    Image(painter = painterResource(R.drawable.radio_keumusic_top_logo_image), contentDescription = "Rádio KeuMusic Top", modifier = Modifier.fillMaxSize().padding(3.dp), contentScale = ContentScale.Fit)
                     
                 }
             }
@@ -167,7 +167,7 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 color = Color.White.copy(alpha = .18f),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Image(painter = painterResource(R.drawable.keutube_logo), contentDescription = "KeuTube", modifier = Modifier.fillMaxSize().padding(3.dp), contentScale = ContentScale.Fit)
+                    Image(painter = painterResource(R.drawable.keutube_logo_image), contentDescription = "KeuTube", modifier = Modifier.fillMaxSize().padding(3.dp), contentScale = ContentScale.Fit)
                 }
             }
         }
@@ -176,7 +176,7 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 @Composable
 private fun RadioKeuMusicTopMark(modifier: Modifier = Modifier) {
-    Image(painter = painterResource(R.drawable.radio_keumusic_top_logo), contentDescription = "Rádio KeuMusic Top", modifier = modifier, contentScale = ContentScale.Fit)
+    Image(painter = painterResource(R.drawable.radio_keumusic_top_logo_image), contentDescription = "Rádio KeuMusic Top", modifier = modifier, contentScale = ContentScale.Fit)
 }
 
 @Composable
