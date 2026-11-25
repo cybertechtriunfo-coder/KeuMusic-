@@ -67,11 +67,38 @@ fun KeuMusicAiConversation(
     // Se o usuário já autorizou o microfone, a conversa por voz inicia ao abrir o Keu.
     // Na primeira utilização, solicita a permissão automaticamente; digitação continua opcional.
     var handsFreeEnabled by rememberSaveable { mutableStateOf(false) }
+    var memoryEnabled by rememberSaveable {
+        mutableStateOf(context.getSharedPreferences("keumusic_ai_private_memory", android.content.Context.MODE_PRIVATE).getBoolean("memory_enabled", false))
+    }
     var waitingForCommand by rememberSaveable { mutableStateOf(false) }
     val voiceEngine = remember(context) { KeuOfflineSpeechEngine(context) }
     val ttsEngine = remember(context) { KeuOfflineTtsEngine(context) }
     val conversation = remember {
-        mutableStateListOf(KeuMusicAiLine("KeuMusic", "Olá! Eu sou o KeuMusic AI. Quando você me chamar, vou responder por voz."))
+        val restored = if (memoryEnabled) KeuConversationMemory.load(context) else emptyList()
+n        mutableStateListOf<KeuMusicAiLine>().apply {
+            if (restored.isEmpty()) add(KeuMusicAiLine("KeuMusic", "Olá! Eu sou o KeuMusic AI. Quando você me chamar, vou responder por voz."))
+            else restored.forEach { add(KeuMusicAiLine(it.author, it.message)) }
+        }
+    }
+
+    fun addConversationLine(author: String, message: String) {
+        conversation.add(KeuMusicAiLine(author, message))
+        while (conversation.size > 12) conversation.removeAt(0)
+        if (memoryEnabled) {
+            KeuConversationMemory.save(context, conversation.map { KeuConversationMemory.Line(it.author, it.message) })
+        }
+    }
+
+    LaunchedEffect(memoryEnabled) {
+        context.getSharedPreferences("keumusic_ai_private_memory", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("memory_enabled", memoryEnabled).apply()
+        if (memoryEnabled) {
+            KeuConversationMemory.save(context, conversation.map { KeuConversationMemory.Line(it.author, it.message) })
+            voiceStatus = "Memória local ativada • histórico salvo somente neste aparelho."
+        } else {
+            KeuConversationMemory.clear(context)
+            voiceStatus = "Memória local desativada • histórico salvo apagado."
+        }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -142,8 +169,7 @@ fun KeuMusicAiConversation(
     }
 
     fun speak(answer: String) {
-        conversation.add(KeuMusicAiLine("KeuMusic", answer))
-        while (conversation.size > 12) conversation.removeAt(0)
+        addConversationLine("KeuMusic", answer)
         if (voiceReady) {
             playAnswer(answer)
         } else {
@@ -225,8 +251,7 @@ fun KeuMusicAiConversation(
 
             return
         }
-        conversation.add(KeuMusicAiLine("Você", transcript))
-        while (conversation.size > 12) conversation.removeAt(0)
+        addConversationLine("Você", transcript)
         val text = normalized(transcript)
         if (waitingForCommand) {
             processCommand(transcript)
@@ -302,7 +327,7 @@ fun KeuMusicAiConversation(
     fun sendTypedMessage() {
         val question = input.trim()
         if (question.isEmpty()) return
-        conversation.add(KeuMusicAiLine("Você", question))
+        addConversationLine("Você", question)
         input = ""
         processCommand(question)
     }
@@ -340,6 +365,12 @@ fun KeuMusicAiConversation(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            Button(
+                onClick = { memoryEnabled = !memoryEnabled },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(if (memoryEnabled) "Memória: ligada" else "Memória: desligada")
+            }
             Button(
                 onClick = {
                     if (!permissionGranted) permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
