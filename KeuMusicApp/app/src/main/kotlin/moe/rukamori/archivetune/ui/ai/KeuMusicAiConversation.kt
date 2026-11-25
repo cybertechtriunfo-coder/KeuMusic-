@@ -87,7 +87,7 @@ fun KeuMusicAiConversation(
         conversation.add(KeuMusicAiLine(author, message))
         while (conversation.size > 12) conversation.removeAt(0)
         if (memoryEnabled) {
-            KeuConversationMemory.save(context, conversation.map { KeuConversationMemory.Line(it.author, it.message) })
+            KeuConversationMemory.append(context, KeuConversationMemory.Line(author, message))
         }
     }
 
