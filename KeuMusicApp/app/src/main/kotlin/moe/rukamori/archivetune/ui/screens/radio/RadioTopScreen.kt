@@ -166,7 +166,7 @@ fun RadioTopScreen(navController: NavController) {
         error = null
         try {
             stations = withContext(Dispatchers.IO) {
-                val url = URL("https://de1.api.radio-browser.info/json/stations/bycountrycodeexact/BR?limit=1000&order=clickcount&reverse=true&hidebroken=true")
+                val url = URL("https://de1.api.radio-browser.info/json/stations/bycountrycodeexact/BR?limit=5000&order=clickcount&reverse=true&hidebroken=true")
                 val connection = (url.openConnection() as HttpURLConnection).apply {
                     connectTimeout = 12000
                     readTimeout = 15000
@@ -203,7 +203,7 @@ fun RadioTopScreen(navController: NavController) {
 
     val filtered = remember(stations, selectedState, selectedCity, popularOnly, searchQuery) {
         stations.filter { station ->
-            (selectedState == "Todos os estados" || station.state.contains(selectedState, true) || (selectedState == "Goiás" && station.city != null)) &&
+            (selectedState == "Todos os estados" || normalizedRadioName(station.state).contains(normalizedRadioName(selectedState)) || (selectedState == "Goiás" && station.city != null)) &&
                 (selectedCity == "Todas as cidades" || station.city == selectedCity) &&
                 (searchQuery.isBlank() || station.name.contains(searchQuery.trim(), true))
         }.let { list ->
