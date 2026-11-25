@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import androidx.compose.ui.draw.clip
@@ -60,8 +62,19 @@ private val AiPanel = Color(0xE9081020)
 
 @Composable
 fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
+    val context = LocalContext.current
     var expanded by rememberSaveable { mutableStateOf(false) }
     var dismissed by rememberSaveable { mutableStateOf(false) }
+    var showIntro by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val introPreferences = context.getSharedPreferences("keumusic_ai_runtime", android.content.Context.MODE_PRIVATE)
+        if (!introPreferences.getBoolean("welcome_presented", false)) {
+            introPreferences.edit().putBoolean("welcome_presented", true).apply()
+            showIntro = true
+            expanded = true
+        }
+    }
     var aiSpeaking by rememberSaveable { mutableStateOf(false) }
     var avatarX by rememberSaveable { mutableFloatStateOf(Float.NaN) }
     var avatarY by rememberSaveable { mutableFloatStateOf(Float.NaN) }
@@ -200,6 +213,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                     onVoiceSearch = playerViewModel::playFromVoiceSearch,
                     onToggleShuffle = playerViewModel::toggleShuffle,
                     onToggleRepeat = playerViewModel::toggleRepeat,
+                    startWithWelcome = showIntro,
                 )
             }
         } else {
