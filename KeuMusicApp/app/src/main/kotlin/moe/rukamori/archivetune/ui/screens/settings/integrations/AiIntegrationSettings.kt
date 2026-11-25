@@ -180,7 +180,7 @@ fun AiIntegrationSettings(
             item {
                 PreferenceEntry(
                     title = { Text("Assistente virtual flutuante") },
-                    description = "Mostrar o avatar holográfico nas telas do aplicativo.",
+                    description = "Mostrar o avatar holográfico e receber a apresentação por voz. O microfone só será solicitado quando você ativar a escuta.",
                     icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
                     trailingContent = {
                         Switch(checked = assistantEnabled, onCheckedChange = setAssistantEnabled)
