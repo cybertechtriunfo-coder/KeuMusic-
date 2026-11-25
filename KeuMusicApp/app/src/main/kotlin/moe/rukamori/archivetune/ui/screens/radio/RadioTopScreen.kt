@@ -176,7 +176,7 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 @Composable
 private fun RadioKeuMusicTopMark(modifier: Modifier = Modifier) {
-    Image(painter = painterResource(R.drawable.radio_keumusic_top_logo), contentDescription = "Rádio KeuMusic Top", modifier = modifier, contentScale = ContentScale.Crop)
+    Image(painter = painterResource(R.drawable.radio_keumusic_top_logo), contentDescription = "Rádio KeuMusic Top", modifier = modifier, contentScale = ContentScale.Fit)
 }
 
 @Composable
