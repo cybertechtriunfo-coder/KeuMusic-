@@ -116,22 +116,28 @@ fun KeuMusicAiConversation(
 
     fun playAnswer(answer: String) {
         conversationScope.launch {
-            ttsEngine.speak(
-                text = answer,
-                onStart = {
-                    voiceEngine.setOutputActive(true)
-                    onSpeakingChanged(true)
-                },
-                onDone = {
-                    voiceEngine.setOutputActive(false)
-                    onSpeakingChanged(false)
-                },
-                onError = { message ->
-                    voiceEngine.setOutputActive(false)
-                    onSpeakingChanged(false)
-                    voiceStatus = "Falha na voz masculina: $message"
-                },
-            )
+            try {
+                ttsEngine.speak(
+                    text = answer,
+                    onStart = {
+                        voiceEngine.setOutputActive(true)
+                        onSpeakingChanged(true)
+                    },
+                    onDone = {
+                        voiceEngine.setOutputActive(false)
+                        onSpeakingChanged(false)
+                    },
+                    onError = { message ->
+                        voiceEngine.setOutputActive(false)
+                        onSpeakingChanged(false)
+                        voiceStatus = "Falha na voz masculina: $message"
+                    },
+                )
+            } catch (error: Exception) {
+                voiceEngine.setOutputActive(false)
+                onSpeakingChanged(false)
+                voiceStatus = "Não consegui iniciar minha voz: ${error.message ?: "erro desconhecido"}"
+            }
         }
     }
 
