@@ -53,6 +53,8 @@ fun KeuMusicAiConversation(
     onPausePlayback: () -> Unit,
     onResumePlayback: () -> Unit,
     onVoiceSearch: (String) -> Unit,
+    onToggleShuffle: () -> Unit,
+    onToggleRepeat: () -> Unit,
 ) {
     val context = LocalContext.current
     val conversationScope = rememberCoroutineScope()
@@ -233,6 +235,14 @@ fun KeuMusicAiConversation(
             }
             command.contains("quem criou") || command.contains("seu criador") ->
                 speak("Fui criado por Cleudeson Soares, idealizador do KeuMusic e criador do KeuMusic AI.")
+            listOf("embaralha", "embaralhar", "modo aleatorio", "musica aleatoria", "mistura as musicas", "ativar aleatorio").any(command::contains) -> {
+                onToggleShuffle()
+                speak("Certo! Estou alternando o modo aleatório.")
+            }
+            listOf("repetir musica", "repetir a faixa", "modo repeticao", "repeticao", "loop da musica", "ativar repeticao").any(command::contains) -> {
+                onToggleRepeat()
+                speak("Pronto! Estou alternando o modo de repetição.")
+            }
             command.contains("roleta") || command.contains("roll") ->
                 speak("A roleta musical está no KeuMusic. Você pode abrir a área da roleta e girar para sortear uma música.")
             command.contains("playlist") ->
