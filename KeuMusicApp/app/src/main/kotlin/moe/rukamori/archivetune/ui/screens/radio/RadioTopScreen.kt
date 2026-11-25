@@ -166,7 +166,7 @@ fun RadioTopScreen(navController: NavController) {
         error = null
         try {
             stations = withContext(Dispatchers.IO) {
-                val url = URL("https://de1.api.radio-browser.info/json/stations/bycountrycodeexact/BR?limit=500&order=clickcount&reverse=true&hidebroken=true")
+                val url = URL("https://de1.api.radio-browser.info/json/stations/bycountrycodeexact/BR?limit=1000&order=clickcount&reverse=true&hidebroken=true")
                 val connection = (url.openConnection() as HttpURLConnection).apply {
                     connectTimeout = 12000
                     readTimeout = 15000
@@ -201,7 +201,7 @@ fun RadioTopScreen(navController: NavController) {
 
     LaunchedEffect(Unit) { loadStations() }
 
-    val filtered = remember(stations, selectedState, popularOnly, searchQuery) {
+    val filtered = remember(stations, selectedState, selectedCity, popularOnly, searchQuery) {
         stations.filter { station ->
             (selectedState == "Todos os estados" || station.state.contains(selectedState, true) || (selectedState == "Goiás" && station.city != null)) &&
                 (selectedCity == "Todas as cidades" || station.city == selectedCity) &&
@@ -368,7 +368,7 @@ fun RadioTopScreen(navController: NavController) {
                                 }
                                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
                                     Text(station.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(listOf(station.state, station.genre).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "Brasil" },
+                                    Text(listOf(station.city ?: station.state, station.genre).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "Brasil" },
                                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                                 }
                                 Text("AO VIVO", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
