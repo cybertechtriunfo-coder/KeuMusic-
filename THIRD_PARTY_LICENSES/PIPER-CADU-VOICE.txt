@@ -1,0 +1,26 @@
+Piper voice model: pt_BR-cadu-medium
+Language: Portuguese (Brazil)
+Speaker profile: one male speaker
+Quality: medium
+Sample rate: 22,050 Hz
+
+Voice model source:
+https://huggingface.co/rhasspy/piper-voices/tree/main/pt/pt_BR/cadu/medium
+
+Model card:
+https://huggingface.co/rhasspy/piper-voices/blob/main/pt/pt_BR/cadu/medium/MODEL_CARD
+
+The current model card identifies the voice dataset as CC0 and states that
+this version was fine-tuned from the rdh base model (medium quality, nl_BE,
+one Flemish speaker, CC0), with MRD and SDP.
+
+The KeuMusic integration downloads the sherpa-onnx packaged model:
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
+
+Packaged archive:
+vits-piper-pt_BR-cadu-medium.tar.bz2
+SHA-256:
+aba78157d4b89acc17ddef15a70f4b2474f4c189d4de6035002ac7fec9d5d303
+
+Voice dataset/model rights are separate from the sherpa-onnx runtime license.
+Retain this notice with distributions that include or download the voice model.
