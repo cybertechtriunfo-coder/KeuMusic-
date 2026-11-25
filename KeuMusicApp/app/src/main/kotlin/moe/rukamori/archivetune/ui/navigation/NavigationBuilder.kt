@@ -35,6 +35,7 @@ import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResult
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultArgument
 import moe.rukamori.archivetune.ui.screens.search.OnlineSearchResultRoute
 import moe.rukamori.archivetune.ui.screens.search.SearchScreen
+import moe.rukamori.archivetune.ui.screens.radio.RadioTopScreen
 import moe.rukamori.archivetune.ui.screens.spotifyhome.SpotifyHomeScreen
 import moe.rukamori.archivetune.ui.screens.stats.route.StatsScreen
 import moe.rukamori.archivetune.ui.screens.yearinmusic.YearInMusicScreen
@@ -74,6 +75,9 @@ fun NavGraphBuilder.navigationBuilder(
             },
             headerScrollConnection = searchScrollConnection,
         )
+    }
+    composable("radio_keumusic_top") {
+        RadioTopScreen(navController)
     }
     composable("local_songs") {
         LocalSongScreen(navController)
