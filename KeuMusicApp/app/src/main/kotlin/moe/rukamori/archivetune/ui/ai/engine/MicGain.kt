@@ -31,6 +31,10 @@ internal class MicGain {
      * noise level is left alone (Jarvis is speaking, and its own voice is not the room's noise).
      */
     fun process(x: FloatArray, learn: Boolean = true): Float {
+        // AudioRecord can return an empty block on some device/driver edge cases.
+        // Do not let an empty RMS calculation poison the adaptive gain with NaN.
+        if (x.isEmpty()) return 0f
+
         val raw = rms(x)
         if (learn) {
             // The noise floor follows the quietest blocks: down quickly, up only slowly, so speech doesn't raise it.
@@ -68,9 +72,10 @@ internal class MicGain {
         private const val RISE = 0.2f
 
         fun rms(x: FloatArray): Float {
+            if (x.isEmpty()) return 0f
             var sum = 0.0
             for (v in x) sum += v * v
-            return sqrt(sum / x.size.coerceAtLeast(1)).toFloat()
+            return sqrt(sum / x.size).toFloat()
         }
     }
 }
