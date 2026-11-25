@@ -30,6 +30,9 @@ internal fun onlineSearchResultRoute(query: String): String {
     return "$OnlineSearchResultRoutePrefix$encodedQuery"
 }
 
+internal fun keuTubSearchResultRoute(query: String): String =
+    onlineSearchResultRoute(query) + "?filter=video"
+
 internal fun decodeOnlineSearchQuery(encodedQuery: String): String =
     if (encodedQuery == EmptyOnlineSearchQuery) {
         ""
