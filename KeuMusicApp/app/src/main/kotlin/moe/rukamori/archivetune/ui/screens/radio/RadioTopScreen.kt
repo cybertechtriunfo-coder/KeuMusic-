@@ -5,6 +5,7 @@
 package moe.rukamori.archivetune.ui.screens.radio
 
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +61,7 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -132,9 +136,8 @@ fun RadioTopShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 color = Color.White.copy(alpha = 0.16f),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("K", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
-                    Text("♫", color = Color(0xFF8CF4E8), fontSize = 18.sp,
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 7.dp, bottom = 5.dp))
+                    Image(painter = painterResource(R.drawable.radio_keumusic_top_logo), contentDescription = "Rádio KeuMusic Top", modifier = Modifier.fillMaxSize().padding(3.dp), contentScale = ContentScale.Fit)
+                    
                 }
             }
         }
@@ -164,7 +167,7 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 color = Color.White.copy(alpha = .18f),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("▶", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                    Image(painter = painterResource(R.drawable.keutube_logo), contentDescription = "KeuTube", modifier = Modifier.fillMaxSize().padding(3.dp), contentScale = ContentScale.Fit)
                 }
             }
         }
@@ -173,20 +176,7 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 @Composable
 private fun RadioKeuMusicTopMark(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.background(
-            Brush.linearGradient(listOf(Color(0xFF063D4B), Color(0xFF087E91), Color(0xFF172A55)))
-        ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("K", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
-        Text(
-            "♫",
-            color = Color(0xFF8CF4E8),
-            fontSize = 18.sp,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 7.dp, bottom = 5.dp),
-        )
-    }
+    Image(painter = painterResource(R.drawable.radio_keumusic_top_logo), contentDescription = "Rádio KeuMusic Top", modifier = modifier, contentScale = ContentScale.Crop)
 }
 
 @Composable
