@@ -56,8 +56,8 @@ class KeuOfflineTtsEngine(private val context: Context) {
                     model = File(directory, MODEL_FILE).absolutePath,
                     tokens = File(directory, "tokens.txt").absolutePath,
                     dataDir = File(directory, "espeak-ng-data").absolutePath,
-                    noiseScale = 0.667f,
-                    noiseScaleW = 0.8f,
+                    noiseScale = 0.5f,
+                    noiseScaleW = 0.333f,
                     lengthScale = 1.0f,
                 )
                 val config = OfflineTtsConfig(
