@@ -370,8 +370,9 @@ fun KeuMusicAiConversation(
         val wakePhrases = listOf(
             "keu music", "keumusic", "queu music", "q music", "keu musick", "keu musiq",
             "oi keumusic", "ola keumusic", "e ai keumusic", "bom dia keumusic",
-            "boa tarde keumusic", "boa noite keumusic", "tudo bem keumusic",
+            "boa tarde keumusic", "boa noite keumusic", "tudo bem keumusic", "como vai keumusic",
             "oi keu", "ola keu", "e ai keu", "bom dia keu", "boa tarde keu", "boa noite keu",
+            "tudo bem keu", "como vai keu", "fala keu", "ei keu", "alo keu",
             "keu", "queu",
         )
         val wakePhrase = wakePhrases.firstOrNull(text::contains)
