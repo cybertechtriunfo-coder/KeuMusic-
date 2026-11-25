@@ -132,7 +132,8 @@ fun KeuMusicAiConversation(
             voiceStatus = "Memória local ativada • histórico salvo somente neste aparelho."
         } else {
             KeuConversationMemory.clear(context)
-            voiceStatus = "Memória local desativada • histórico salvo apagado."
+            KeuLongTermMemory.clear(context)
+            voiceStatus = "Memória local desativada • histórico e lembranças salvos apagados."
         }
     }
 
@@ -294,6 +295,36 @@ fun KeuMusicAiConversation(
         val command = normalized(rawCommand)
         waitingForCommand = false
         when {
+            command.startsWith("lembre que ") || command.startsWith("guarde que ") || command.startsWith("anote que ") -> {
+                if (!memoryEnabled) {
+                    speak("A memória está desligada. Ative o botão Memória para eu guardar informações somente neste aparelho.")
+                } else {
+                    val fact = rawCommand.replace(Regex("(?i)^\\s*(lembre|guarde|anote)\\s+que\\s+"), "").trim()
+                    if (KeuLongTermMemory.remember(context, fact)) {
+                        speak("Pode deixar! Guardei essa informação na minha memória local.")
+                    } else {
+                        speak("Não consegui guardar essa informação. Pode dizer de outra forma?")
+                    }
+                }
+            }
+            command.startsWith("o que voce lembra") || command.startsWith("listar memorias") ||
+                command.startsWith("o que voce sabe sobre mim") -> {
+                val topic = command.substringAfter("sobre", "").trim()
+                val facts = KeuLongTermMemory.find(context, topic)
+                speak(
+                    if (facts.isEmpty()) "Ainda não tenho lembranças guardadas sobre isso."
+                    else "Estas são as informações que guardei: " + facts.joinToString(". ")
+                )
+            }
+            command.startsWith("esqueca que ") -> {
+                val topic = rawCommand.replace(Regex("(?i)^\\s*esqueça?\\s+que\\s+"), "").trim()
+                val removed = KeuLongTermMemory.forget(context, topic)
+                speak(if (removed > 0) "Pronto! Apaguei essa lembrança da minha memória local." else "Não encontrei essa lembrança para apagar.")
+            }
+            command.contains("apague minhas memorias") || command.contains("limpe minhas memorias") -> {
+                KeuLongTermMemory.clear(context)
+                speak("Pronto! Apaguei as lembranças de longo prazo que estavam salvas neste aparelho.")
+            }
             listOf("proxima", "troca de musica", "trocar musica", "outra musica", "passa a musica", "pula a musica", "avanca").any(command::contains) -> {
                 onPlayNext()
                 speak(listOf("Beleza! Vamos para a próxima.", "Pode deixar, já estou trocando.", "Pronto! Próxima música na área.").random())
@@ -524,6 +555,11 @@ fun KeuMusicAiConversation(
         }
         Text(
             text = "O nome fica salvo somente neste aparelho e é usado nas saudações do Keu. Ele não é enviado ao serviço de IA.",
+            color = Color(0xFF8297AA),
+            style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+        )
+        Text(
+            text = "Com a memória ligada, diga “lembre que...” para guardar uma informação, “o que você lembra?” para consultar ou “esqueça que...” para apagar. As lembranças ficam neste aparelho.",
             color = Color(0xFF8297AA),
             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
         )
