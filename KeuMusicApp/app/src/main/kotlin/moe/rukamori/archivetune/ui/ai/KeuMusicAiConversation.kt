@@ -71,8 +71,7 @@ fun KeuMusicAiConversation(
     var permissionGranted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
     }
-    // Se o usuário já autorizou o microfone, a conversa por voz inicia ao abrir o Keu.
-    // Na primeira utilização, solicita a permissão automaticamente; digitação continua opcional.
+    // A escuta só começa após o usuário tocar em "Ativar escuta".
     var handsFreeEnabled by rememberSaveable { mutableStateOf(false) }
     var memoryEnabled by rememberSaveable {
         mutableStateOf(context.getSharedPreferences("keumusic_ai_private_memory", android.content.Context.MODE_PRIVATE).getBoolean("memory_enabled", false))
@@ -369,7 +368,9 @@ fun KeuMusicAiConversation(
         }
 
         val wakePhrases = listOf(
-            "keu music", "queu music", "q music", "keu musick", "keu musiq",
+            "keu music", "keumusic", "queu music", "q music", "keu musick", "keu musiq",
+            "oi keumusic", "ola keumusic", "e ai keumusic", "bom dia keumusic",
+            "boa tarde keumusic", "boa noite keumusic", "tudo bem keumusic",
             "oi keu", "ola keu", "e ai keu", "bom dia keu", "boa tarde keu", "boa noite keu",
             "keu", "queu",
         )
