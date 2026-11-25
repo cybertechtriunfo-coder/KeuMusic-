@@ -55,3 +55,36 @@ internal object KeuConversationMemory {
             .apply()
     }
 }
+
+
+/**
+ * Optional local profile memory. Saving a name is an explicit user action.
+ * This profile remains in app-private preferences and is not sent to AI providers.
+ */
+internal object KeuUserProfileMemory {
+    private const val PREFS = "keumusic_ai_private_memory"
+    private const val KEY_DISPLAY_NAME = "profile_display_name"
+
+    fun loadName(context: Context): String =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_DISPLAY_NAME, "")
+            .orEmpty()
+            .trim()
+            .take(60)
+
+    fun saveName(context: Context, name: String) {
+        val safeName = name.trim().take(60)
+        if (safeName.isBlank()) return
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_DISPLAY_NAME, safeName)
+            .apply()
+    }
+
+    fun clear(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_DISPLAY_NAME)
+            .apply()
+    }
+}
