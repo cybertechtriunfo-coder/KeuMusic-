@@ -229,7 +229,7 @@ object AiTextService {
         temperature: Double,
         maxTokens: Int,
     ): String {
-        val endpoint = "$GeminiBaseEndpoint/models/${model.trim()}:generateContent?key=${apiKey.trim()}"
+        val endpoint = "$GeminiBaseEndpoint/models/${model.trim()}:generateContent"
         val body =
             JSONObject()
                 .put(
@@ -250,6 +250,7 @@ object AiTextService {
                 ).toString()
         val response =
             client.post(endpoint) {
+                header("x-goog-api-key", apiKey.trim())
                 contentType(ContentType.Application.Json)
                 setBody(body)
             }
@@ -314,9 +315,9 @@ object AiTextService {
 
     private fun defaultModelFor(provider: AiProvider): String =
         when (provider) {
-            AiProvider.CHATGPT -> "gpt-4o"
-            AiProvider.GEMINI -> "gemini-3.5-flash"
-            AiProvider.CLAUDE -> "claude-3-haiku-20240307"
+            AiProvider.CHATGPT -> "gpt-4o-mini"
+            AiProvider.GEMINI -> "gemini-flash-latest"
+            AiProvider.CLAUDE -> "claude-haiku-4-5-20251001"
             AiProvider.OPENROUTER -> "openrouter/auto"
             AiProvider.CUSTOM -> throw AiServiceException("No AI model configured")
             AiProvider.NONE -> throw AiServiceException("AI provider is disabled")
@@ -340,7 +341,9 @@ object AiTextService {
     }
 
     private suspend fun fetchGeminiModels(apiKey: String): List<AiModelOption> {
-        val response = client.get("$GeminiBaseEndpoint/models?key=${apiKey.trim()}")
+        val response = client.get("$GeminiBaseEndpoint/models") {
+            header("x-goog-api-key", apiKey.trim())
+        }
         val raw = response.bodyAsText()
         if (response.status.value !in 200..299) throw apiException(response.status.value, raw)
         val models = JSONObject(raw).optJSONArray("models") ?: return emptyList()
