@@ -183,7 +183,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        HologramFace(size = 104.dp, pulse = pulse, speaking = aiSpeaking)
+                        HologramFace(size = 156.dp, pulse = pulse, speaking = aiSpeaking)
                         Text(
                             text = "Olá! Eu sou o KeuMusic AI",
                             color = Color.White,
@@ -282,45 +282,110 @@ private fun HologramFace(size: Dp, pulse: Float, speaking: Boolean = false) {
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(Brush.radialGradient(listOf(Color(0xFF3A7898), Color(0xFF172A55), Color(0xFF091426))))
-            .border(1.2.dp, AiCyan.copy(alpha = pulse), CircleShape),
+            .background(
+                Brush.radialGradient(
+                    listOf(Color(0xFF164A68), Color(0xFF10233F), Color(0xFF050B18)),
+                ),
+            )
+            .border(1.4.dp, AiCyan.copy(alpha = pulse), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(size * 0.58f, size * 0.70f)
-                .clip(RoundedCornerShape(42.dp))
-                .background(Brush.verticalGradient(listOf(Color(0xFFB6EFFF), Color(0xFF4E83B6), Color(0xFF20365F)))),
-        ) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .padding(horizontal = size * 0.13f),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Box(Modifier.size(size * 0.075f).clip(CircleShape).background(Color(0xFF06172B)))
-                Box(Modifier.size(size * 0.075f).clip(CircleShape).background(Color(0xFF06172B)))
+        Canvas(Modifier.fillMaxSize().padding(size * 0.035f)) {
+            val w = this.size.width
+            val h = this.size.height
+            val cx = w / 2f
+            val glow = AiCyan.copy(alpha = 0.55f * pulse)
+
+            // Holographic shoulders and chest plate.
+            val torso = androidx.compose.ui.graphics.Path().apply {
+                moveTo(w * 0.13f, h * 0.94f)
+                lineTo(w * 0.20f, h * 0.77f)
+                lineTo(w * 0.37f, h * 0.68f)
+                lineTo(w * 0.63f, h * 0.68f)
+                lineTo(w * 0.80f, h * 0.77f)
+                lineTo(w * 0.87f, h * 0.94f)
+                close()
             }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = size * 0.16f)
-                    .width(size * 0.18f)
-                    .height(if (speaking) 6.dp else 2.dp)
-                    .width(if (speaking) size * 0.24f else size * 0.18f)
-                    .clip(CircleShape)
-                    .background(AiCyan),
+            drawPath(torso, Color(0xFF163A58).copy(alpha = 0.92f))
+            drawPath(torso, glow, style = Stroke(width = 2.dp.toPx()))
+            drawLine(AiBlue.copy(alpha = 0.8f), Offset(w * 0.30f, h * 0.84f), Offset(w * 0.70f, h * 0.84f), 1.5.dp.toPx())
+
+            // Neck and angular cybernetic helmet.
+            drawRoundRect(
+                Color(0xFF397A9B),
+                topLeft = Offset(w * 0.40f, h * 0.62f),
+                size = androidx.compose.ui.geometry.Size(w * 0.20f, h * 0.17f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.04f),
+            )
+            val helmet = androidx.compose.ui.graphics.Path().apply {
+                moveTo(cx, h * 0.08f)
+                lineTo(w * 0.76f, h * 0.20f)
+                lineTo(w * 0.81f, h * 0.49f)
+                lineTo(w * 0.68f, h * 0.68f)
+                lineTo(w * 0.32f, h * 0.68f)
+                lineTo(w * 0.19f, h * 0.49f)
+                lineTo(w * 0.24f, h * 0.20f)
+                close()
+            }
+            drawPath(helmet, Brush.linearGradient(listOf(Color(0xFFB8F4FF), Color(0xFF3C789D), Color(0xFF17314F))))
+            drawPath(helmet, AiCyan.copy(alpha = pulse), style = Stroke(width = 2.2.dp.toPx()))
+
+            // Forehead visor and side armor.
+            drawRoundRect(
+                Color(0xFF10243B),
+                topLeft = Offset(w * 0.25f, h * 0.25f),
+                size = androidx.compose.ui.geometry.Size(w * 0.50f, h * 0.19f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.07f),
+            )
+            drawLine(glow, Offset(w * 0.29f, h * 0.30f), Offset(w * 0.71f, h * 0.30f), 1.dp.toPx())
+            drawRoundRect(AiBlue, Offset(w * 0.16f, h * 0.34f), androidx.compose.ui.geometry.Size(w * 0.10f, h * 0.20f), androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))
+            drawRoundRect(AiBlue, Offset(w * 0.74f, h * 0.34f), androidx.compose.ui.geometry.Size(w * 0.10f, h * 0.20f), androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))
+
+            // Expressive cyan eyes.
+            val eyeY = h * 0.49f
+            drawRoundRect(
+                AiCyan.copy(alpha = 0.95f),
+                Offset(w * 0.32f, eyeY),
+                androidx.compose.ui.geometry.Size(w * 0.15f, h * 0.035f),
+                androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()),
+            )
+            drawRoundRect(
+                AiCyan.copy(alpha = 0.95f),
+                Offset(w * 0.53f, eyeY),
+                androidx.compose.ui.geometry.Size(w * 0.15f, h * 0.035f),
+                androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()),
+            )
+            drawCircle(AiCyan.copy(alpha = 0.25f * pulse), w * 0.13f, Offset(w * 0.395f, eyeY))
+            drawCircle(AiCyan.copy(alpha = 0.25f * pulse), w * 0.605f, Offset(w * 0.605f, eyeY))
+
+            // Mouth plate animates only while the voice engine is speaking.
+            drawRoundRect(
+                Color(0xFF071525),
+                Offset(w * 0.39f, h * 0.57f),
+                androidx.compose.ui.geometry.Size(w * 0.22f, if (speaking) h * 0.075f else h * 0.025f),
+                androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()),
+            )
+            if (speaking) {
+                drawRoundRect(glow, Offset(w * 0.42f, h * 0.59f), androidx.compose.ui.geometry.Size(w * 0.16f, h * 0.025f), androidx.compose.ui.geometry.CornerRadius(5.dp.toPx()))
+            } else {
+                drawLine(glow, Offset(w * 0.43f, h * 0.585f), Offset(w * 0.57f, h * 0.585f), 1.dp.toPx())
+            }
+
+            // Antenna, cheek vents and floating scan lines.
+            drawLine(glow, Offset(cx, h * 0.02f), Offset(cx, h * 0.085f), 2.dp.toPx())
+            drawCircle(AiCyan.copy(alpha = pulse), w * 0.025f, Offset(cx, h * 0.02f))
+            repeat(3) { index ->
+                val y = h * (0.70f + index * 0.035f)
+                drawLine(AiCyan.copy(alpha = 0.28f * pulse), Offset(w * 0.34f, y), Offset(w * 0.66f, y), 1.dp.toPx())
+            }
+        }
+        // Subtle hologram rings make the face legible at the minimized size too.
+        Canvas(Modifier.fillMaxSize()) {
+            drawCircle(
+                AiCyan.copy(alpha = 0.16f * pulse),
+                radius = size.minDimension * 0.47f,
+                style = Stroke(width = 1.dp.toPx()),
             )
         }
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = size * 0.10f)
-                .fillMaxWidth(0.62f)
-                .height(size * 0.18f)
-                .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                .background(Color(0xFF101B35)),
-        )
     }
 }
