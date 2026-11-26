@@ -127,6 +127,8 @@ class KeuOfflineSpeechEngine(private val context: Context) {
             deleteRecursively()
             mkdirs()
         }
+        var extractedBytes = 0L
+        var nextProgressAt = 8L * 1024L * 1024L
         TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
             while (true) {
                 val entry = tar.nextTarEntry ?: break
@@ -145,8 +147,14 @@ class KeuOfflineSpeechEngine(private val context: Context) {
                         val read = tar.read(buffer)
                         if (read < 0) break
                         output.write(buffer, 0, read)
+                        extractedBytes += read
+                        if (extractedBytes >= nextProgressAt) {
+                            postStatus("Instalando o reconhecimento de voz • ${(extractedBytes / (1024L * 1024L))} MB extraídos. Não feche o KeuMusic.")
+                            nextProgressAt += 8L * 1024L * 1024L
+                        }
                     }
                 }
+                postStatus("Arquivo preparado: $targetName")
             }
         }
         archive.delete()
