@@ -84,12 +84,14 @@ fun KeuMusicAiConversation(
         mutableStateOf(KeuUserProfileMemory.loadName(context))
     }
     var waitingForCommand by rememberSaveable { mutableStateOf(false) }
+    var onboardingNamePending by rememberSaveable { mutableStateOf(false) }
     val voiceEngine = remember(context) { KeuOfflineSpeechEngine(context) }
     val ttsEngine = remember(context) { KeuOfflineTtsEngine(context) }
 
-    // Android fallback is allowed only when the installed engine exposes an
-    // explicitly male Brazilian Portuguese voice. Never silently switch to a
-    // default voice whose gender/timbre is unknown.
+    // Use an installed Brazilian Portuguese Android voice immediately for the
+    // first greeting while Piper downloads its offline model. Prefer a voice
+    // explicitly tagged male; if Android exposes no gender metadata, use its
+    // pt-BR voice as a temporary startup fallback and switch to Piper when ready.
     DisposableEffect(context) {
         val mainHandler = Handler(Looper.getMainLooper())
         val fallback = TextToSpeech(context) { result ->
@@ -111,20 +113,25 @@ fun KeuMusicAiConversation(
                             .lowercase(Locale.ROOT)
                         descriptor.contains("male") || descriptor.contains("mascul")
                     }
+                    val startupVoice = maleVoice ?: ptBrVoices.firstOrNull()
                     if (languageResult != TextToSpeech.LANG_MISSING_DATA &&
-                        languageResult != TextToSpeech.LANG_NOT_SUPPORTED && maleVoice != null
+                        languageResult != TextToSpeech.LANG_NOT_SUPPORTED && startupVoice != null
                     ) {
-                        fallbackVoice.voice = maleVoice
-                        fallbackVoice.setPitch(0.92f)
-                        fallbackVoice.setSpeechRate(0.96f)
+                        fallbackVoice.voice = startupVoice
+                        fallbackVoice.setPitch(if (maleVoice != null) 0.90f else 0.82f)
+                        fallbackVoice.setSpeechRate(0.94f)
                         systemTtsReady = true
                         if (!voiceReady) {
-                            voiceStatus = "Voz masculina pt-BR do Android pronta • alternativa de segurança."
+                            voiceStatus = if (maleVoice != null) {
+                                "Voz masculina pt-BR do Android pronta • alternativa de segurança."
+                            } else {
+                                "Voz pt-BR temporária pronta • preparando a voz Piper do Keu."
+                            }
                         }
                     } else {
                         systemTtsReady = false
                         if (!voiceReady) {
-                            voiceStatus = "Não encontrei uma voz masculina pt-BR instalada. O Keu não usará uma voz feminina genérica."
+                            voiceStatus = "Não há voz pt-BR instalada no Android. A apresentação falada depende da instalação de uma voz brasileira."
                         }
                     }
                 }
@@ -289,10 +296,13 @@ fun KeuMusicAiConversation(
 
     LaunchedEffect(startWithWelcome) {
         if (startWithWelcome) {
+            onboardingNamePending = profileName.isBlank()
+            waitingForCommand = onboardingNamePending
             speak(
                 "Olá! Eu sou o KeuMusic, mas pode me chamar de Keu. Fui criado por Cleudeson Soares. " +
                     "Estou aqui para conversar com você, ajudar a encontrar músicas e controlar a reprodução " +
-                    "dentro do KeuMusic. Depois desta primeira ativação, basta falar comigo naturalmente; você não precisa tocar em um botão nem repetir meu nome."
+                    "dentro do KeuMusic. Primeiro, quero conhecer você: como posso chamar você? " +
+                    "Pode responder falando. Depois, vamos conversar naturalmente, sem precisar tocar em botões nem repetir meu nome."
             )
         }
     }
@@ -427,6 +437,21 @@ fun KeuMusicAiConversation(
             return
         }
         addConversationLine("Você", transcript)
+        if (onboardingNamePending) {
+            val spokenName = transcript.trim()
+                .replace(Regex("(?i)^(meu nome é|me chamo|pode me chamar de|sou o|sou a)\\s+"), "")
+                .trim().take(60)
+            if (spokenName.isNotBlank()) {
+                KeuUserProfileMemory.saveName(context, spokenName)
+                profileName = spokenName
+                onboardingNamePending = false
+                waitingForCommand = false
+                speak("Prazer em conhecer você, $spokenName! Agora estou pronto. Pode falar comigo naturalmente.")
+            } else {
+                speak("Não consegui identificar seu nome. Pode dizer novamente?")
+            }
+            return
+        }
         val text = normalized(transcript)
         if (waitingForCommand) {
             processCommand(transcript)
