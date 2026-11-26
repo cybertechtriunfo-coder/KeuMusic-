@@ -134,11 +134,6 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                         )
-                        Text(
-                            text = "LABORATÓRIO HOLOGRÁFICO",
-                            color = Color.White.copy(alpha = 0.62f),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
                     }
                     Box(
                         modifier = Modifier
@@ -174,7 +169,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f, fill = false)
-                        .heightIn(min = 210.dp, max = 280.dp)
+                        .heightIn(min = 270.dp, max = 340.dp)
                         .clip(RoundedCornerShape(22.dp))
                         .background(Color(0x8A06101F)),
                 ) {
@@ -186,53 +181,26 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        HologramFace(size = 156.dp, pulse = pulse, speaking = aiSpeaking)
-                        Text(
-                            text = "Olá! Eu sou o KeuMusic AI",
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = "Seu assistente virtual está ganhando vida.",
-                            color = Color.White.copy(alpha = 0.82f),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Surface(
-                            color = AiBlue.copy(alpha = 0.18f),
-                            shape = RoundedCornerShape(50),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, AiCyan.copy(alpha = 0.45f)),
-                        ) {
-                            Text(
-                                text = "INTERFACE EXPERIMENTAL",
-                                color = AiCyan,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            )
-                        }
+                        HologramFace(size = 248.dp, pulse = pulse, speaking = aiSpeaking)
                     }
                 }
 
-                Text(
-                    text = "CONVERSA EXPERIMENTAL • voz em português e reconhecimento de fala do Android.",
-                    color = Color.White.copy(alpha = 0.76f),
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
                 }
-                KeuMusicAiConversation(
-                    onSpeakingChanged = { aiSpeaking = it },
-                    onPlayNext = playerViewModel::playNext,
-                    onPlayPrevious = playerViewModel::playPrevious,
-                    onPausePlayback = playerViewModel::pausePlayback,
-                    onResumePlayback = playerViewModel::resumePlayback,
-                    onVoiceSearch = playerViewModel::playFromVoiceSearch,
-                    onToggleShuffle = playerViewModel::toggleShuffle,
-                    onToggleRepeat = playerViewModel::toggleRepeat,
-                    startWithWelcome = showIntro,
-                )
             }
+        // Keep the voice assistant alive without showing the legacy experimental chat controls.
+        Box(modifier = Modifier.size(0.dp).alpha(0f).clipToBounds()) {
+            KeuMusicAiConversation(
+                onSpeakingChanged = { aiSpeaking = it },
+                onPlayNext = playerViewModel::playNext,
+                onPlayPrevious = playerViewModel::playPrevious,
+                onPausePlayback = playerViewModel::pausePlayback,
+                onResumePlayback = playerViewModel::resumePlayback,
+                onVoiceSearch = playerViewModel::playFromVoiceSearch,
+                onToggleShuffle = playerViewModel::toggleShuffle,
+                onToggleRepeat = playerViewModel::toggleRepeat,
+                startWithWelcome = showIntro,
+            )
+        }
         if (!expanded) {
             Box(
                 modifier = Modifier
