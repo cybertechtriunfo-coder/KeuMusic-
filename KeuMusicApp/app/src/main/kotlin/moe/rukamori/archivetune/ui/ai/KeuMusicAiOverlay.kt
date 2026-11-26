@@ -81,6 +81,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
         }
     }
     var aiSpeaking by rememberSaveable { mutableStateOf(false) }
+    var voiceStatus by rememberSaveable { mutableStateOf("Preparando microfone e reconhecimento de voz...") }
     var avatarX by rememberSaveable { mutableFloatStateOf(Float.NaN) }
     var avatarY by rememberSaveable { mutableFloatStateOf(Float.NaN) }
     // When the user closes the assistant, stop composing its animation loop
@@ -182,6 +183,13 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         HologramFace(size = 248.dp, pulse = pulse, speaking = aiSpeaking)
+                        Text(
+                            text = voiceStatus,
+                            color = AiCyan.copy(alpha = 0.9f),
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
 
@@ -191,6 +199,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
         Box(modifier = Modifier.size(0.dp).alpha(0f).clipToBounds()) {
             KeuMusicAiConversation(
                 onSpeakingChanged = { aiSpeaking = it },
+                onStatusChanged = { voiceStatus = it },
                 onPlayNext = playerViewModel::playNext,
                 onPlayPrevious = playerViewModel::playPrevious,
                 onPausePlayback = playerViewModel::pausePlayback,
