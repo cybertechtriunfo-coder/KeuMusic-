@@ -5,6 +5,8 @@ package moe.rukamori.archivetune.ui.ai
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -83,26 +85,46 @@ fun KeuMusicAiConversation(
     val voiceEngine = remember(context) { KeuOfflineSpeechEngine(context) }
     val ttsEngine = remember(context) { KeuOfflineTtsEngine(context) }
 
-    // Android speech synthesis is the safety net: the assistant must still speak
-    // when the optional offline voice model cannot be downloaded or initialized.
+    // Android fallback is allowed only when the installed engine exposes an
+    // explicitly male Brazilian Portuguese voice. Never silently switch to a
+    // default voice whose gender/timbre is unknown.
     DisposableEffect(context) {
+        val mainHandler = Handler(Looper.getMainLooper())
         val fallback = TextToSpeech(context) { result ->
             if (result == TextToSpeech.SUCCESS) {
-                val fallbackVoice = systemTts
-                val languageResult = fallbackVoice?.setLanguage(Locale("pt", "BR"))
-                    ?: TextToSpeech.LANG_NOT_SUPPORTED
-                if (languageResult != TextToSpeech.LANG_MISSING_DATA &&
-                    languageResult != TextToSpeech.LANG_NOT_SUPPORTED
-                ) {
-                    // Android fallback: deliberately slower and lower-pitched, avoiding
-                    // the bright/childlike default delivery on some device TTS engines.
-                    fallbackVoice?.setPitch(0.78f)
-                    fallbackVoice?.setSpeechRate(0.88f)
-                }
-                systemTtsReady = languageResult != TextToSpeech.LANG_MISSING_DATA &&
-                    languageResult != TextToSpeech.LANG_NOT_SUPPORTED
-                if (systemTtsReady && !voiceReady) {
-                    voiceStatus = "Voz do Android pronta • voz offline pode ser preparada depois."
+                mainHandler.post {
+                    val fallbackVoice = systemTts
+                    if (fallbackVoice == null) {
+                        systemTtsReady = false
+                        voiceStatus = "A voz de segurança do Android ainda não ficou disponível."
+                        return@post
+                    }
+                    val languageResult = fallbackVoice.setLanguage(Locale("pt", "BR"))
+                    val ptBrVoices = fallbackVoice.voices.orEmpty().filter {
+                        it.locale.language.equals("pt", ignoreCase = true) &&
+                            it.locale.country.equals("BR", ignoreCase = true)
+                    }
+                    val maleVoice = ptBrVoices.firstOrNull { voice ->
+                        val descriptor = (voice.name + " " + voice.features.orEmpty().joinToString(" "))
+                            .lowercase(Locale.ROOT)
+                        descriptor.contains("male") || descriptor.contains("mascul")
+                    }
+                    if (languageResult != TextToSpeech.LANG_MISSING_DATA &&
+                        languageResult != TextToSpeech.LANG_NOT_SUPPORTED && maleVoice != null
+                    ) {
+                        fallbackVoice.voice = maleVoice
+                        fallbackVoice.setPitch(0.92f)
+                        fallbackVoice.setSpeechRate(0.96f)
+                        systemTtsReady = true
+                        if (!voiceReady) {
+                            voiceStatus = "Voz masculina pt-BR do Android pronta • alternativa de segurança."
+                        }
+                    } else {
+                        systemTtsReady = false
+                        if (!voiceReady) {
+                            voiceStatus = "Não encontrei uma voz masculina pt-BR instalada. O Keu não usará uma voz feminina genérica."
+                        }
+                    }
                 }
             } else {
                 systemTtsReady = false
@@ -172,7 +194,7 @@ fun KeuMusicAiConversation(
         try {
             ttsEngine.initialize { voiceStatus = it }
             voiceReady = true
-            voiceStatus = "Voz masculina brasileira pronta • processamento offline"
+            voiceStatus = "Voz Piper Cadu pt-BR pronta • processamento offline"
         } catch (error: Exception) {
             voiceReady = false
             voiceStatus = "Não consegui preparar a voz masculina: ${error.message ?: "erro desconhecido"}"
@@ -191,7 +213,7 @@ fun KeuMusicAiConversation(
         if (engine == null || !systemTtsReady) {
             voiceEngine.setOutputActive(false)
             onSpeakingChanged(false)
-            voiceStatus = "Não há mecanismo de voz disponível. Instale ou habilite a conversão de texto em voz do Android."
+            voiceStatus = "Não há voz masculina pt-BR disponível. Instale uma voz masculina brasileira no mecanismo de voz do Android."
             return
         }
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -242,12 +264,12 @@ fun KeuMusicAiConversation(
                     onError = { message ->
                         voiceEngine.setOutputActive(false)
                         onSpeakingChanged(false)
-                        voiceStatus = "Voz offline indisponível ($message). Usando a voz do Android."
+                        voiceStatus = "A voz Piper falhou ($message). Verificando alternativa masculina pt-BR."
                         playSystemAnswer(answer)
                     },
                 )
             } catch (error: Exception) {
-                voiceStatus = "Voz offline indisponível. Usando a voz do Android."
+                voiceStatus = "A voz Piper falhou. Verificando alternativa masculina pt-BR."
                 playSystemAnswer(answer)
             }
         }
