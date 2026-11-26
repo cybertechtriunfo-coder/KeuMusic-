@@ -88,8 +88,17 @@ fun KeuMusicAiConversation(
     DisposableEffect(context) {
         val fallback = TextToSpeech(context) { result ->
             if (result == TextToSpeech.SUCCESS) {
-                val languageResult = systemTts?.setLanguage(Locale("pt", "BR"))
+                val fallbackVoice = systemTts
+                val languageResult = fallbackVoice?.setLanguage(Locale("pt", "BR"))
                     ?: TextToSpeech.LANG_NOT_SUPPORTED
+                if (languageResult != TextToSpeech.LANG_MISSING_DATA &&
+                    languageResult != TextToSpeech.LANG_NOT_SUPPORTED
+                ) {
+                    // Android fallback: deliberately slower and lower-pitched, avoiding
+                    // the bright/childlike default delivery on some device TTS engines.
+                    fallbackVoice?.setPitch(0.78f)
+                    fallbackVoice?.setSpeechRate(0.88f)
+                }
                 systemTtsReady = languageResult != TextToSpeech.LANG_MISSING_DATA &&
                     languageResult != TextToSpeech.LANG_NOT_SUPPORTED
                 if (systemTtsReady && !voiceReady) {
