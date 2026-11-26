@@ -48,6 +48,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -103,9 +105,8 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
         val marginPx = with(density) { margin.toPx() }
         val startX = if (avatarX.isNaN()) (maxWidthPx - avatarSizePx - marginPx).coerceAtLeast(0f) else avatarX
         val startY = if (avatarY.isNaN()) (maxHeightPx - avatarSizePx - with(density) { 22.dp.toPx() }).coerceAtLeast(0f) else avatarY
-        if (expanded) {
-            Column(
-                modifier = Modifier
+        Column(
+                modifier = (if (expanded) Modifier
                     .fillMaxWidth(0.90f)
                     .padding(end = 14.dp, bottom = 18.dp)
                     .heightIn(max = (maxHeight - 24.dp).coerceAtLeast(320.dp))
@@ -121,9 +122,10 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                         ),
                     )
                     .border(1.dp, AiCyan.copy(alpha = 0.52f), RoundedCornerShape(28.dp))
-                    .padding(16.dp),
+                    .padding(16.dp) else Modifier.size(0.dp).alpha(0f).clipToBounds()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (expanded) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -218,6 +220,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                }
                 KeuMusicAiConversation(
                     onSpeakingChanged = { aiSpeaking = it },
                     onPlayNext = playerViewModel::playNext,
@@ -230,7 +233,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                     startWithWelcome = showIntro,
                 )
             }
-        } else {
+        if (!expanded) {
             Box(
                 modifier = Modifier
                     .offset { IntOffset(startX.roundToInt(), startY.roundToInt()) }
