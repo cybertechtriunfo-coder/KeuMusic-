@@ -193,7 +193,7 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
             )
             Column(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, end = 92.dp, bottom = 14.dp)) {
                 Text("KeuTube", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Vídeos do YouTube • Pesquise e assista", color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Vídeos do YouTube • Pesquise e assista", color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 14.sp)
             }
         }
     }
