@@ -73,7 +73,7 @@ fun KeuMusicAiConversation(
     var permissionGranted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
     }
-    // A escuta só começa após o usuário tocar em "Ativar escuta".
+    // A escuta inicia automaticamente depois da permissão de microfone.
     var handsFreeEnabled by rememberSaveable { mutableStateOf(false) }
     var memoryEnabled by rememberSaveable {
         mutableStateOf(context.getSharedPreferences("keumusic_ai_private_memory", android.content.Context.MODE_PRIVATE).getBoolean("memory_enabled", false))
@@ -290,7 +290,7 @@ fun KeuMusicAiConversation(
             speak(
                 "Olá! Eu sou o KeuMusic, mas pode me chamar de Keu. Fui criado por Cleudeson Soares. " +
                     "Estou aqui para conversar com você, ajudar a encontrar músicas e controlar a reprodução " +
-                    "dentro do KeuMusic. Quando quiser falar comigo, toque em Ativar escuta e diga: Oi, Keu."
+                    "dentro do KeuMusic. Depois desta primeira ativação, basta falar comigo naturalmente; você não precisa tocar em um botão nem repetir meu nome."
             )
         }
     }
