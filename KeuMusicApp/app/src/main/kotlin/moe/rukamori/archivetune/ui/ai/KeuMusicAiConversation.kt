@@ -52,6 +52,7 @@ private data class KeuMusicAiLine(val author: String, val message: String)
 @Composable
 fun KeuMusicAiConversation(
     onSpeakingChanged: (Boolean) -> Unit,
+    onStatusChanged: (String) -> Unit = {},
     onPlayNext: () -> Unit,
     onPlayPrevious: () -> Unit,
     onPausePlayback: () -> Unit,
@@ -478,6 +479,8 @@ fun KeuMusicAiConversation(
     }
 
     val latestTranscriptHandler by rememberUpdatedState<(String) -> Unit> { handleTranscript(it) }
+    val latestStatusHandler by rememberUpdatedState<(String) -> Unit> { onStatusChanged(it) }
+    LaunchedEffect(voiceStatus) { latestStatusHandler(voiceStatus) }
 
     LaunchedEffect(voiceReady, systemTtsReady, pendingSpeech) {
         val queued = pendingSpeech
