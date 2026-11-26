@@ -276,7 +276,7 @@ private fun MatrixGrid(modifier: Modifier = Modifier, pulse: Float) {
             val dotY = (index * 43f + 17f) % size.height
             drawCircle(AiCyan.copy(alpha = 0.34f * pulse), radius = 1.8.dp.toPx(), center = androidx.compose.ui.geometry.Offset(dotX, dotY))
         }
-        drawCircle(AiPurple.copy(alpha = 0.18f * pulse), radius = size.minDimension * 0.42f, center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f), style = Stroke(width = 1.dp.toPx()))
+        drawCircle(AiPurple.copy(alpha = 0.18f * pulse), radius = minOf(w, h) * 0.42f, center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f), style = Stroke(width = 1.dp.toPx()))
     }
 }
 
