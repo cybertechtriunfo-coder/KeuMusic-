@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -108,9 +109,10 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
         val startY = if (avatarY.isNaN()) (maxHeightPx - avatarSizePx - with(density) { 22.dp.toPx() }).coerceAtLeast(0f) else avatarY
         Column(
                 modifier = (if (expanded) Modifier
-                    .fillMaxWidth(0.90f)
+                    .fillMaxWidth(0.92f)
+                    .fillMaxHeight(0.78f)
                     .padding(end = 14.dp, bottom = 18.dp)
-                    .heightIn(max = (maxHeight - 24.dp).coerceAtLeast(320.dp))
+                    .heightIn(min = 420.dp, max = (maxHeight - 24.dp).coerceAtLeast(420.dp))
                     .verticalScroll(rememberScrollState())
                     .clip(RoundedCornerShape(28.dp))
                     .background(
@@ -169,8 +171,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .heightIn(min = 270.dp, max = 340.dp)
+                        .heightIn(min = 300.dp, max = 320.dp)
                         .clip(RoundedCornerShape(22.dp))
                         .background(Color(0x8A06101F)),
                 ) {
@@ -185,9 +186,16 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                         HologramFace(size = 248.dp, pulse = pulse, speaking = aiSpeaking)
                         Text(
                             text = voiceStatus,
-                            color = AiCyan.copy(alpha = 0.9f),
+                            color = AiCyan.copy(alpha = 0.95f),
                             style = MaterialTheme.typography.labelSmall,
-                            maxLines = 2,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = "Fale naturalmente com o Keu. Você também pode dizer: próxima música, música anterior, pausar ou continuar.",
+                            color = Color.White.copy(alpha = 0.82f),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 3,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -196,7 +204,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                 }
             }
         // Keep the voice assistant alive without showing the legacy experimental chat controls.
-        Box(modifier = Modifier.size(0.dp).alpha(0f).clipToBounds()) {
+        Box(modifier = Modifier.size(1.dp).alpha(0f).clipToBounds()) {
             KeuMusicAiConversation(
                 onSpeakingChanged = { aiSpeaking = it },
                 onStatusChanged = { voiceStatus = it },
