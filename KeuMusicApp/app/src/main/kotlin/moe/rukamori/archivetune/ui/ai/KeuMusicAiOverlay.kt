@@ -83,6 +83,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
     }
     var aiSpeaking by rememberSaveable { mutableStateOf(false) }
     var voiceStatus by rememberSaveable { mutableStateOf("Preparando microfone e reconhecimento de voz...") }
+    var lastTranscript by rememberSaveable { mutableStateOf("") }
     var avatarX by rememberSaveable { mutableFloatStateOf(Float.NaN) }
     var avatarY by rememberSaveable { mutableFloatStateOf(Float.NaN) }
     // When the user closes the assistant, stop composing its animation loop
@@ -192,8 +193,8 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = "Fale naturalmente com o Keu. Você também pode dizer: próxima música, música anterior, pausar ou continuar.",
-                            color = Color.White.copy(alpha = 0.82f),
+                            text = if (lastTranscript.isBlank()) "Fale naturalmente com o Keu. Você também pode dizer: próxima música, música anterior, pausar ou continuar." else "Você disse: $lastTranscript",
+                            color = Color.White.copy(alpha = 0.9f),
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis,
@@ -208,6 +209,7 @@ fun KeuMusicAiOverlay(playerViewModel: PlayerViewModel) {
             KeuMusicAiConversation(
                 onSpeakingChanged = { aiSpeaking = it },
                 onStatusChanged = { voiceStatus = it },
+                onTranscriptChanged = { lastTranscript = it },
                 onPlayNext = playerViewModel::playNext,
                 onPlayPrevious = playerViewModel::playPrevious,
                 onPausePlayback = playerViewModel::pausePlayback,
