@@ -181,15 +181,7 @@ fun SearchScreen(
                                 )
                             }
 
-                            item(
-                                key = "search_msn_keumusic_shortcut",
-                                contentType = "msn_keumusic_shortcut",
-                            ) {
-                                MsnMessengerShortcut(
-                                    onClick = { navController.navigate("msn_keumusic") },
-                                    modifier = Modifier.animateItem(),
-                                )
-                            }
+                            // MSN KeuMusic temporarily hidden to isolate the Search screen startup issue.
                             item(
                                 key = "search_explore_moods_title",
                                 contentType = "section_title",
