@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -153,14 +155,14 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
                 Brush.linearGradient(listOf(Color(0xFF3B145D), Color(0xFFB51F54), Color(0xFF25164F)))
             ).padding(18.dp)
         ) {
-            Column(Modifier.align(Alignment.CenterStart)) {
+            Column(Modifier.align(Alignment.CenterStart).padding(start = 18.dp, end = 124.dp)) {
                 Text("KeuTube", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
                 Text("Vídeos do YouTube • Pesquise e assista", color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
             }
             Image(
                 painter = painterResource(R.drawable.keutube_logo_image),
                 contentDescription = "KeuTube",
-                modifier = Modifier.align(Alignment.CenterEnd).size(84.dp).clip(RoundedCornerShape(20.dp)),
+                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(112.dp).clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)),
                 contentScale = ContentScale.Crop,
             )
         }
