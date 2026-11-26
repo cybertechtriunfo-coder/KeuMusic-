@@ -82,45 +82,62 @@ class KeuOfflineTtsEngine(private val context: Context) {
         if (spokenText.isBlank()) return@withContext
         var track: AudioTrack? = null
         try {
-            val generated = engine.generate(spokenText, sid = 0, speed = 0.96f)
-            if (generated.samples.isEmpty() || generated.sampleRate <= 0) error("O sintetizador não gerou áudio.")
-            val samples = KeuVoiceEffects.process(generated.samples, generated.sampleRate)
-            val minBuffer = AudioTrack.getMinBufferSize(
-                generated.sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT,
-            )
-            if (minBuffer <= 0) error("O aparelho não aceita o formato de áudio da voz.")
-
-            val format = AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                .setSampleRate(generated.sampleRate)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build()
-            val attributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build()
-            track = AudioTrack.Builder()
-                .setAudioAttributes(attributes)
-                .setAudioFormat(format)
-                .setBufferSizeInBytes(maxOf(minBuffer, 16_384))
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build()
-            if (track.state != AudioTrack.STATE_INITIALIZED) error("Não foi possível iniciar a saída de áudio.")
-
-            currentTrack = track
-            track.play()
-            main.post(onStart)
-            var offset = 0
-            while (offset < samples.size && !released && currentTrack === track) {
-                val written = track.write(samples, offset, minOf(2_048, samples.size - offset), AudioTrack.WRITE_BLOCKING)
-                if (written < 0) error("Falha ao reproduzir a voz (áudio $written).")
-                if (written == 0) Thread.sleep(8) else offset += written
+            var sampleRate = 0
+            var totalWritten = 0L
+            val pieces = KeuSpeechChunks.split(spokenText, first = 72, max = 150)
+            for (piece in pieces) {
+                if (released || (track != null && currentTrack !== track)) break
+                val generated = engine.generate(piece, sid = 0, speed = 0.96f)
+                if (generated.samples.isEmpty() || generated.sampleRate <= 0) continue
+                if (sampleRate == 0) sampleRate = generated.sampleRate
+                if (generated.sampleRate != sampleRate) error("A voz mudou a frequência de áudio durante a resposta.")
+                val samples = KeuVoiceEffects.process(generated.samples, generated.sampleRate)
+                if (track == null) {
+                    val minBuffer = AudioTrack.getMinBufferSize(
+                        sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT,
+                    )
+                    if (minBuffer <= 0) error("O aparelho não aceita o formato de áudio da voz.")
+                    val format = AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                        .setSampleRate(sampleRate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                    val attributes = AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                    track = AudioTrack.Builder()
+                        .setAudioAttributes(attributes)
+                        .setAudioFormat(format)
+                        .setBufferSizeInBytes(maxOf(minBuffer, 16_384))
+                        .setTransferMode(AudioTrack.MODE_STREAM)
+                        .build()
+                    if (track.state != AudioTrack.STATE_INITIALIZED) error("Não foi possível iniciar a saída de áudio.")
+                    currentTrack = track
+                    track.play()
+                    main.post(onStart)
+                }
+                var offset = 0
+                while (offset < samples.size && !released && currentTrack === track) {
+                    val written = track.write(samples, offset, minOf(2_048, samples.size - offset), AudioTrack.WRITE_BLOCKING)
+                    if (written < 0) error("Falha ao reproduzir a voz (áudio $written).")
+                    if (written == 0) Thread.sleep(8) else {
+                        offset += written
+                        totalWritten += written
+                    }
+                }
+                if (released || currentTrack !== track) break
             }
-            while (!released && currentTrack === track &&
-                track.playState == AudioTrack.PLAYSTATE_PLAYING &&
-                track.playbackHeadPosition.toLong() < samples.size.toLong()
-            ) Thread.sleep(20)
-            if (!released && currentTrack === track) main.post(onDone)
+            val activeTrack = track
+            if (activeTrack != null && totalWritten > 0) {
+                while (!released && currentTrack === activeTrack &&
+                    activeTrack.playState == AudioTrack.PLAYSTATE_PLAYING &&
+                    activeTrack.playbackHeadPosition.toLong() < totalWritten
+                ) Thread.sleep(20)
+                if (!released && currentTrack === activeTrack) main.post(onDone)
+            } else if (!released) {
+                error("O sintetizador não gerou áudio para a resposta.")
+            }
         } catch (error: Throwable) {
             main.post { onError(error.message ?: "Falha ao sintetizar a voz.") }
         } finally {
