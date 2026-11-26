@@ -529,14 +529,20 @@ fun KeuMusicAiConversation(
         }
     }
 
-    LaunchedEffect(handsFreeEnabled, permissionGranted, voiceEngine) {
-        if (handsFreeEnabled && permissionGranted) {
+    LaunchedEffect(handsFreeEnabled, permissionGranted, voiceReady, voiceEngine) {
+        // Prepare speech output first. Starting Whisper at the same time caused two
+        // large model downloads to compete and could leave the welcome queued for ages.
+        // The Keu speaks first; Portuguese recognition is prepared immediately after TTS.
+        if (handsFreeEnabled && permissionGranted && voiceReady) {
             voiceEngine.start(
                 status = { voiceStatus = it },
                 transcript = { latestTranscriptHandler(it) },
             )
         } else {
             voiceEngine.stop()
+            if (handsFreeEnabled && permissionGranted && !voiceReady) {
+                voiceStatus = "Preparando primeiro a voz do Keu; depois inicio a escuta em português."
+            }
         }
     }
 
