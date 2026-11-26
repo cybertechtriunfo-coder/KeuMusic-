@@ -70,6 +70,8 @@ fun KeuMusicAiConversation(
     var voiceReady by remember { mutableStateOf(false) }
     var systemTts by remember { mutableStateOf<TextToSpeech?>(null) }
     var systemTtsReady by remember { mutableStateOf(false) }
+    var systemTtsInitFinished by remember { mutableStateOf(false) }
+    var pendingSpeechUseSystemTts by remember { mutableStateOf(false) }
     var voiceStatus by remember { mutableStateOf("Preparando a voz masculina do Keu...") }
     var pendingSpeech by remember { mutableStateOf<String?>(null) }
     var permissionGranted by remember {
@@ -100,6 +102,7 @@ fun KeuMusicAiConversation(
                     val fallbackVoice = systemTts
                     if (fallbackVoice == null) {
                         systemTtsReady = false
+                        systemTtsInitFinished = true
                         voiceStatus = "A voz de segurança do Android ainda não ficou disponível."
                         return@post
                     }
@@ -125,6 +128,7 @@ fun KeuMusicAiConversation(
                         fallbackVoice.setPitch(if (maleVoice != null) 0.90f else 0.86f)
                         fallbackVoice.setSpeechRate(0.94f)
                         systemTtsReady = true
+                        systemTtsInitFinished = true
                         if (!voiceReady) {
                             voiceStatus = if (maleVoice != null) {
                                 "Voz masculina pt-BR do Android pronta • alternativa de segurança."
@@ -134,6 +138,7 @@ fun KeuMusicAiConversation(
                         }
                     } else {
                         systemTtsReady = false
+                        systemTtsInitFinished = true
                         if (!voiceReady) {
                             voiceStatus = "Não há voz pt-BR instalada no Android. A apresentação falada depende da instalação de uma voz brasileira."
                         }
@@ -141,6 +146,7 @@ fun KeuMusicAiConversation(
                 }
             } else {
                 systemTtsReady = false
+                systemTtsInitFinished = true
                 voiceStatus = "O mecanismo de voz do Android não iniciou."
             }
         }
@@ -302,12 +308,18 @@ fun KeuMusicAiConversation(
         if (startWithWelcome) {
             onboardingNamePending = profileName.isBlank()
             waitingForCommand = onboardingNamePending
-            speak(
+            val welcome =
                 "Olá! Eu sou o KeuMusic, mas pode me chamar de Keu. Fui criado por Cleudeson Soares. " +
                     "Estou aqui para conversar com você, ajudar a encontrar músicas e controlar a reprodução " +
                     "dentro do KeuMusic. Primeiro, quero conhecer você: como posso chamar você? " +
                     "Pode responder falando. Depois, vamos conversar naturalmente, sem precisar tocar em botões nem repetir meu nome."
-            )
+            addConversationLine("KeuMusic", welcome)
+            // A saudação inicial usa primeiro a voz que já existe no Android.
+            // O Piper continua sendo preparado em segundo plano e só será usado
+            // como reserva se o Android não inicializar uma voz pt-BR.
+            pendingSpeechUseSystemTts = true
+            pendingSpeech = welcome
+            voiceStatus = "Iniciando as boas-vindas pela voz disponível no celular. A voz própria do Keu será preparada em segundo plano."
         }
     }
 
@@ -515,11 +527,21 @@ fun KeuMusicAiConversation(
     val latestStatusHandler by rememberUpdatedState<(String) -> Unit> { onStatusChanged(it) }
     LaunchedEffect(voiceStatus) { latestStatusHandler(voiceStatus) }
 
-    LaunchedEffect(voiceReady, systemTtsReady, pendingSpeech) {
+    LaunchedEffect(voiceReady, systemTtsReady, systemTtsInitFinished, pendingSpeech, pendingSpeechUseSystemTts) {
         val queued = pendingSpeech
-        if ((voiceReady || systemTtsReady) && queued != null) {
+        val canSpeakQueued = if (pendingSpeechUseSystemTts) {
+            systemTtsReady || (systemTtsInitFinished && voiceReady)
+        } else {
+            voiceReady || systemTtsReady
+        }
+        if (queued != null && canSpeakQueued) {
             pendingSpeech = null
-            playAnswer(queued)
+            if (pendingSpeechUseSystemTts && systemTtsReady) {
+                playSystemAnswer(queued)
+            } else {
+                playAnswer(queued)
+            }
+            pendingSpeechUseSystemTts = false
         }
     }
 
