@@ -134,6 +134,7 @@ fun AiIntegrationSettings(
     val (selectedModel, setSelectedModel) = rememberPreference(AiSelectedModelKey, "")
     val (customModel, setCustomModel) = rememberPreference(AiCustomModelKey, "")
     var showApiKeyDialog by rememberSaveable { mutableStateOf(false) }
+    var showVoiceAssistantDialog by rememberSaveable { mutableStateOf(false) }
     val (assistantEnabled, setAssistantEnabled) = rememberPreference(KeuMusicAiEnabledKey, false)
     val (djMode, setDjMode) = rememberPreference(KeuMusicAiDjModeKey, "smart")
     val (djVoiceDucking, setDjVoiceDucking) = rememberPreference(KeuMusicAiVoiceDuckingKey, true)
@@ -158,6 +159,10 @@ fun AiIntegrationSettings(
             provider != AiProvider.CUSTOM &&
             apiKey.isNotBlank()
     val canTestApi = hasApiConfiguration && hasModelConfiguration && !actionState.isTesting
+
+    if (assistantEnabled && showVoiceAssistantDialog) {
+        KeuMusicVoiceAssistantDialog(onDismiss = { showVoiceAssistantDialog = false })
+    }
 
     if (showApiKeyDialog) {
         ApiKeyDialog(
@@ -186,6 +191,14 @@ fun AiIntegrationSettings(
                         Switch(checked = assistantEnabled, onCheckedChange = setAssistantEnabled)
                     },
                     onClick = { setAssistantEnabled(!assistantEnabled) },
+                )
+            }
+            item(visible = assistantEnabled) {
+                PreferenceEntry(
+                    title = { Text("Conversar com Keu") },
+                    description = "Fale em português e receba respostas por voz. O microfone só é ativado quando você tocar em Falar.",
+                    icon = { Icon(painterResource(R.drawable.mic), null) },
+                    onClick = { showVoiceAssistantDialog = true },
                 )
             }
         }
