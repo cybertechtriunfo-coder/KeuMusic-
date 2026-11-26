@@ -113,16 +113,24 @@ fun KeuMusicAiConversation(
                             .lowercase(Locale.ROOT)
                         descriptor.contains("male") || descriptor.contains("mascul")
                     }
-                    val startupVoice = maleVoice
+                    // Prefer an explicitly male pt-BR voice, but do not block the
+                    // assistant when Android exposes no gender metadata. In that case,
+                    // keep the engine's accepted pt-BR default voice as a startup fallback;
+                    // Piper Cadu remains the preferred male voice when its model is ready.
+                    val startupVoice = maleVoice ?: ptBrVoices.firstOrNull()
                     if (languageResult != TextToSpeech.LANG_MISSING_DATA &&
-                        languageResult != TextToSpeech.LANG_NOT_SUPPORTED && startupVoice != null
+                        languageResult != TextToSpeech.LANG_NOT_SUPPORTED
                     ) {
-                        fallbackVoice.voice = startupVoice
-                        fallbackVoice.setPitch(0.90f)
+                        if (startupVoice != null) fallbackVoice.voice = startupVoice
+                        fallbackVoice.setPitch(if (maleVoice != null) 0.90f else 0.86f)
                         fallbackVoice.setSpeechRate(0.94f)
                         systemTtsReady = true
                         if (!voiceReady) {
-                            voiceStatus = "Voz masculina pt-BR do Android pronta • alternativa de segurança."
+                            voiceStatus = if (maleVoice != null) {
+                                "Voz masculina pt-BR do Android pronta • alternativa de segurança."
+                            } else {
+                                "Voz pt-BR do Android pronta • alternativa inicial enquanto preparo a voz masculina Keu."
+                            }
                         }
                     } else {
                         systemTtsReady = false
@@ -529,19 +537,19 @@ fun KeuMusicAiConversation(
         }
     }
 
-    LaunchedEffect(handsFreeEnabled, permissionGranted, voiceReady, voiceEngine) {
-        // Prepare speech output first. Starting Whisper at the same time caused two
-        // large model downloads to compete and could leave the welcome queued for ages.
-        // The Keu speaks first; Portuguese recognition is prepared immediately after TTS.
-        if (handsFreeEnabled && permissionGranted && voiceReady) {
+    LaunchedEffect(handsFreeEnabled, permissionGranted, voiceReady, systemTtsReady, voiceEngine) {
+        // The Android pt-BR voice is a real startup fallback. Do not make listening
+        // depend on the optional Piper download: if Piper is delayed or unavailable,
+        // Keu must still hear the user and answer through Android TTS.
+        if (handsFreeEnabled && permissionGranted && (voiceReady || systemTtsReady)) {
             voiceEngine.start(
                 status = { voiceStatus = it },
                 transcript = { latestTranscriptHandler(it) },
             )
         } else {
             voiceEngine.stop()
-            if (handsFreeEnabled && permissionGranted && !voiceReady) {
-                voiceStatus = "Preparando primeiro a voz do Keu; depois inicio a escuta em português."
+            if (handsFreeEnabled && permissionGranted) {
+                voiceStatus = "Preparando uma voz de segurança pt-BR para iniciar a conversa."
             }
         }
     }
