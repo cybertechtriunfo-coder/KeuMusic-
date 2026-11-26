@@ -29,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -56,7 +55,6 @@ internal fun KeuMusicVoiceAssistantDialog(
     var status by remember { mutableStateOf("Pronto para conversar em português.") }
     var listening by remember { mutableStateOf(false) }
     var thinking by remember { mutableStateOf(false) }
-    var pendingPermission by remember { mutableStateOf(false) }
     var recognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsReady by remember { mutableStateOf(false) }
@@ -93,7 +91,6 @@ internal fun KeuMusicVoiceAssistantDialog(
         } else {
             status = "A permissão do microfone é necessária para conversar por voz."
         }
-        pendingPermission = false
     }
 
     fun requestListening() {
@@ -102,7 +99,6 @@ internal fun KeuMusicVoiceAssistantDialog(
         if (granted) {
             startListening()
         } else {
-            pendingPermission = true
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
@@ -196,10 +192,6 @@ internal fun KeuMusicVoiceAssistantDialog(
             tts = null
             ttsReady = false
         }
-    }
-
-    LaunchedEffect(pendingPermission) {
-        if (!pendingPermission) return@LaunchedEffect
     }
 
     AlertDialog(
