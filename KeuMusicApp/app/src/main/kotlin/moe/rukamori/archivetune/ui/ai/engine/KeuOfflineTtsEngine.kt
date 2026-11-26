@@ -52,6 +52,7 @@ class KeuOfflineTtsEngine(private val context: Context) {
                 if (tts != null) return@withLock
 
                 val directory = ensureVoiceFiles { message -> main.post { onStatus(message) } }
+                main.post { onStatus("Arquivos de voz instalados • carregando o cérebro de fala do Keu...") }
                 val vits = OfflineTtsVitsModelConfig(
                     model = File(directory, MODEL_FILE).absolutePath,
                     tokens = File(directory, "tokens.txt").absolutePath,
@@ -63,7 +64,9 @@ class KeuOfflineTtsEngine(private val context: Context) {
                 val config = OfflineTtsConfig(
                     model = OfflineTtsModelConfig(vits = vits, numThreads = 2, provider = "cpu"),
                 )
+                main.post { onStatus("Inicializando a voz neural masculina pt-BR...") }
                 tts = OfflineTts(config = config)
+                main.post { onStatus("Voz masculina do Keu pronta • preparando a primeira resposta...") }
             }
         }
     }
@@ -163,6 +166,7 @@ class KeuOfflineTtsEngine(private val context: Context) {
             val totalLabel = if (total > 0L) " de ${total / (1024 * 1024)} MB" else ""
             onStatus("Baixando voz masculina do Keu: ${downloaded / (1024 * 1024)} MB$totalLabel")
         }
+        onStatus("Download concluído • extraindo o modelo de voz masculina...")
         extractModel(modelArchive, staging)
         modelArchive.delete()
 
@@ -172,9 +176,11 @@ class KeuOfflineTtsEngine(private val context: Context) {
             val totalLabel = if (total > 0L) " de ${total / (1024 * 1024)} MB" else ""
             onStatus("Baixando pronúncia pt-BR: ${downloaded / (1024 * 1024)} MB$totalLabel")
         }
+        onStatus("Pronúncia pt-BR baixada • instalando arquivos de pronúncia...")
         extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
         espeakArchive.delete()
 
+        onStatus("Finalizando instalação e verificando os arquivos da voz...")
         if (!isVoiceReady(staging)) {
             staging.deleteRecursively()
             error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
