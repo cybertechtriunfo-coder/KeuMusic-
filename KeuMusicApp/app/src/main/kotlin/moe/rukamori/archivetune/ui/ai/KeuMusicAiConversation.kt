@@ -148,11 +148,13 @@ fun KeuMusicAiConversation(
         }
     }
 
-    LaunchedEffect(Unit) {
-        voiceStatus = if (permissionGranted) {
-            "Microfone autorizado • toque em Ativar escuta para chamar o Keu."
+    LaunchedEffect(permissionGranted) {
+        if (permissionGranted) {
+            handsFreeEnabled = true
+            voiceStatus = "Microfone autorizado • Keu está iniciando a escuta automaticamente."
         } else {
-            "Toque em Ativar escuta para autorizar o microfone e conversar com o Keu."
+            voiceStatus = "Solicitando acesso ao microfone para iniciar a conversa por voz."
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
@@ -479,14 +481,6 @@ fun KeuMusicAiConversation(
         }
     }
 
-    fun sendTypedMessage() {
-        val question = input.trim()
-        if (question.isEmpty()) return
-        addConversationLine("Você", question)
-        input = ""
-        processCommand(question)
-    }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -509,13 +503,6 @@ fun KeuMusicAiConversation(
                 )
             }
         }
-        OutlinedTextField(
-            value = input,
-            onValueChange = { input = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Digite uma mensagem (opcional)") },
-            maxLines = 2,
-        )
         OutlinedTextField(
             value = profileName,
             onValueChange = { profileName = it.take(60) },
@@ -590,13 +577,6 @@ fun KeuMusicAiConversation(
                 modifier = Modifier.weight(1f),
             ) {
                 Text(if (handsFreeEnabled) "Parar escuta" else "Ativar escuta")
-            }
-            Button(
-                onClick = { sendTypedMessage() },
-                enabled = input.isNotBlank(),
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("Enviar")
             }
         }
         Text(
