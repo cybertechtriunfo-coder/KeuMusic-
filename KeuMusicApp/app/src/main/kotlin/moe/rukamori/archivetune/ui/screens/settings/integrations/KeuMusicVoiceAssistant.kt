@@ -28,13 +28,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -64,7 +63,7 @@ internal fun KeuMusicVoiceAssistantDialog(
     var status by remember { mutableStateOf("Pronto para conversar em português.") }
     var listening by remember { mutableStateOf(false) }
     var thinking by remember { mutableStateOf(false) }
-    var continuousConversation by remember { mutableStateOf(false) }
+    var continuousConversation by remember { mutableStateOf(true) }
     var voiceLevel by remember { mutableStateOf(0f) }
     var recognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
@@ -238,6 +237,12 @@ internal fun KeuMusicVoiceAssistantDialog(
         }
     }
 
+    LaunchedEffect(Unit) {
+        // A ativação da integração já inicia a conversa; o Android só pede
+        // a permissão do microfone na primeira utilização.
+        requestListening()
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("KeuMusic • Assistente de voz") },
@@ -271,23 +276,6 @@ internal fun KeuMusicVoiceAssistantDialog(
                     Text("KEU", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                 }
                 Text(status, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Conversa contínua", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "Depois de responder, Keu volta a ouvir automaticamente.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = continuousConversation,
-                        onCheckedChange = { continuousConversation = it },
-                    )
-                }
                 if (conversation.isEmpty()) {
                     Text("Toque no microfone e fale normalmente. O Keu vai responder em voz alta.")
                 } else {
@@ -298,28 +286,17 @@ internal fun KeuMusicVoiceAssistantDialog(
                         }
                     }
                 }
-                Row(
+                OutlinedButton(
+                    onClick = {
+                        continuousConversation = false
+                        recognizer?.cancel()
+                        listening = false
+                        tts?.stop()
+                        status = "Escuta pausada. Feche e abra novamente para retomar."
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Button(
-                        onClick = { requestListening() },
-                        enabled = !listening && !thinking,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(if (listening) "Ouvindo..." else "Falar")
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            continuousConversation = false
-                            recognizer?.cancel()
-                            listening = false
-                            tts?.stop()
-                            status = "Conversa contínua desativada."
-                        },
-                    ) {
-                        Text("Parar")
-                    }
+                    Text("Parar escuta")
                 }
             }
         },
