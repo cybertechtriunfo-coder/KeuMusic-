@@ -132,13 +132,12 @@ fun MsnMessengerScreen(navController: NavController) {
         webView?.goBack()
     }
 
-    DisposableEffect(webView) {
+    DisposableEffect(Unit) {
         onDispose {
             pendingWebPermission?.deny()
             fileChooserCallback?.onReceiveValue(null)
             webView?.stopLoading()
             webView?.destroy()
-            webView = null
         }
     }
 
