@@ -37,7 +37,7 @@ object KeuMusicAiBrain {
             model = model,
         )
         if (!config.canCallApi) {
-            throw AiServiceException("Configure um provedor de IA em Integração de IA.")
+            return@withContext offlineReply(question)
         }
 
         val history = recentHistory.takeLast(8).joinToString("\n")
@@ -62,5 +62,23 @@ object KeuMusicAiBrain {
             temperature = 0.55,
             maxTokens = 700,
         ).trim().ifBlank { throw AiServiceException("A inteligência retornou uma resposta vazia.") }
+
+    private fun offlineReply(question: String): String {
+        val normalized = question.lowercase()
+        return when {
+            normalized in listOf("oi", "olá", "ola", "e aí", "eai", "bom dia", "boa tarde", "boa noite") ||
+                normalized.startsWith("tudo bem") ->
+                "Olá! Estou por aqui e pronto para ajudar. Pode falar comigo sobre suas músicas ou pedir um comando de reprodução."
+            normalized.contains("quem criou") || normalized.contains("seu criador") ->
+                "Fui criado por Cleudeson Soares, idealizador do KeuMusic."
+            normalized.contains("o que você faz") || normalized.contains("o que voce faz") ||
+                normalized.contains("o que pode fazer") || normalized.contains("ajuda") ->
+                "Posso ajudar a controlar sua música: tocar uma faixa ou artista, avançar, voltar, pausar, continuar, embaralhar e repetir. Também posso conversar quando a conexão inteligente estiver disponível."
+            normalized.contains("seu nome") || normalized.contains("quem é você") || normalized.contains("quem e voce") ->
+                "Sou o KeuMusic, mas pode me chamar de Keu. Fui criado por Cleudeson Soares."
+            else ->
+                "Estou ativo no modo local. Os comandos de música continuam disponíveis, mas as respostas para perguntas gerais dependem da conexão inteligente central do KeuMusic. Você não precisa configurar provedores ou chaves no aplicativo."
+        }
+    }
     }
 }
