@@ -162,8 +162,8 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
             Image(
                 painter = painterResource(R.drawable.keutube_logo_image),
                 contentDescription = "KeuTube",
-                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(112.dp).clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)),
-                contentScale = ContentScale.Crop,
+                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(112.dp),
+                contentScale = ContentScale.Fit,
             )
         }
     }
