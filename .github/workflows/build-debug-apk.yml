@@ -13,6 +13,7 @@ on:
       - feature/keumusic-full-jarvis-port-20261125
       - feature/keumusic-ai-local-memory-20261125
       - work/keumusic-ai-voice-fallback-20261126
+      - work/keumusic-ai-opencompanion-adapt-20261126
   workflow_dispatch:
 
 permissions:
