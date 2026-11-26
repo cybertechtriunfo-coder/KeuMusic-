@@ -10,10 +10,13 @@ package moe.rukamori.archivetune.ui.screens.settings
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +59,7 @@ internal fun KeuMusicVoiceAssistantDialog(
     var status by remember { mutableStateOf("Pronto para conversar em português.") }
     var listening by remember { mutableStateOf(false) }
     var thinking by remember { mutableStateOf(false) }
+    var continuousConversation by remember { mutableStateOf(false) }
     var recognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsReady by remember { mutableStateOf(false) }
@@ -155,6 +160,9 @@ internal fun KeuMusicVoiceAssistantDialog(
                                     tts?.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "keumusic-answer")
                                 } else {
                                     status = "Resposta recebida, mas a voz do aparelho ainda não está pronta."
+                                    if (continuousConversation) {
+                                        Handler(Looper.getMainLooper()).postDelayed({ requestListening() }, 500)
+                                    }
                                 }
                             } catch (error: Exception) {
                                 status = error.message?.takeIf { it.isNotBlank() }
@@ -176,6 +184,22 @@ internal fun KeuMusicVoiceAssistantDialog(
             if (result == TextToSpeech.SUCCESS) {
                 val languageResult = tts?.setLanguage(Locale.forLanguageTag("pt-BR"))
                 tts?.setSpeechRate(0.94f)
+                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) = Unit
+                    override fun onError(utteranceId: String?) {
+                        Handler(Looper.getMainLooper()).post {
+                            status = "A voz apresentou uma falha."
+                            if (continuousConversation) requestListening()
+                        }
+                    }
+                    override fun onDone(utteranceId: String?) {
+                        if (utteranceId == "keumusic-answer" && continuousConversation) {
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                if (continuousConversation && !listening && !thinking) requestListening()
+                            }, 350)
+                        }
+                    }
+                })
                 ttsReady = languageResult != TextToSpeech.LANG_MISSING_DATA &&
                     languageResult != TextToSpeech.LANG_NOT_SUPPORTED
                 if (!ttsReady) status = "Instale dados de voz em português (Brasil) no Android."
@@ -203,6 +227,23 @@ internal fun KeuMusicVoiceAssistantDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(status, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Conversa contínua", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Depois de responder, Keu volta a ouvir automaticamente.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = continuousConversation,
+                        onCheckedChange = { continuousConversation = it },
+                    )
+                }
                 if (conversation.isEmpty()) {
                     Text("Toque no microfone e fale normalmente. O Keu vai responder em voz alta.")
                 } else {
@@ -226,11 +267,12 @@ internal fun KeuMusicVoiceAssistantDialog(
                     }
                     OutlinedButton(
                         onClick = {
+                            continuousConversation = false
                             tts?.stop()
-                            status = "Fala interrompida."
+                            status = "Conversa contínua desativada."
                         },
                     ) {
-                        Text("Parar voz")
+                        Text("Parar")
                     }
                 }
             }
