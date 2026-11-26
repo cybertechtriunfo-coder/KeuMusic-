@@ -115,9 +115,27 @@ class KeuOfflineSpeechEngine(private val context: Context) {
         try {
             connection.connect()
             if (connection.responseCode !in 200..299) error("Download do modelo falhou: HTTP ${connection.responseCode}")
+            val totalBytes = connection.contentLengthLong
+            var downloadedBytes = 0L
+            var nextReportAt = 4L * 1024L * 1024L
             connection.inputStream.use { input ->
-                FileOutputStream(archive).use { output -> input.copyTo(output) }
+                FileOutputStream(archive).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                        downloadedBytes += read
+                        if (downloadedBytes >= nextReportAt) {
+                            val totalLabel = if (totalBytes > 0L) " de ${totalBytes / (1024 * 1024)} MB" else ""
+                            postStatus("Baixando reconhecimento em português: ${downloadedBytes / (1024 * 1024)} MB$totalLabel")
+                            nextReportAt = downloadedBytes + 4L * 1024L * 1024L
+                        }
+                    }
+                }
             }
+            val totalLabel = if (totalBytes > 0L) " de ${totalBytes / (1024 * 1024)} MB" else ""
+            postStatus("Download do reconhecimento concluído: ${downloadedBytes / (1024 * 1024)} MB$totalLabel")
         } finally {
             connection.disconnect()
         }
