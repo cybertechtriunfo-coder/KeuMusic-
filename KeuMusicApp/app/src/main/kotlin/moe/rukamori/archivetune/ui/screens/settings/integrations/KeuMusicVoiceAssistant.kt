@@ -19,7 +19,10 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,6 +43,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -60,6 +65,7 @@ internal fun KeuMusicVoiceAssistantDialog(
     var listening by remember { mutableStateOf(false) }
     var thinking by remember { mutableStateOf(false) }
     var continuousConversation by remember { mutableStateOf(false) }
+    var voiceLevel by remember { mutableStateOf(0f) }
     var recognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsReady by remember { mutableStateOf(false) }
@@ -116,7 +122,9 @@ internal fun KeuMusicVoiceAssistantDialog(
                         status = "Pode falar..."
                     }
                     override fun onBeginningOfSpeech() { status = "Entendi, continue..." }
-                    override fun onRmsChanged(rmsdB: Float) = Unit
+                    override fun onRmsChanged(rmsdB: Float) {
+                        voiceLevel = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)
+                    }
                     override fun onBufferReceived(buffer: ByteArray?) = Unit
                     override fun onEndOfSpeech() {
                         listening = false
@@ -226,6 +234,30 @@ internal fun KeuMusicVoiceAssistantDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    Canvas(modifier = Modifier.size(104.dp)) {
+                        val base = size.minDimension * 0.36f
+                        val pulse = voiceLevel * size.minDimension * 0.12f
+                        drawCircle(
+                            color = Color(0xFF00D9FF).copy(alpha = 0.12f + voiceLevel * 0.22f),
+                            radius = base + pulse,
+                        )
+                        drawCircle(
+                            color = Color(0xFF00D9FF).copy(alpha = 0.75f),
+                            radius = base,
+                            style = Stroke(width = 2.5.dp.toPx()),
+                        )
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.65f),
+                            radius = base * 0.55f,
+                            style = Stroke(width = 1.dp.toPx()),
+                        )
+                    }
+                    Text("KEU", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                }
                 Text(status, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
