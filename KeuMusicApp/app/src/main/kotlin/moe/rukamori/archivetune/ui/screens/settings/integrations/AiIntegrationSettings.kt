@@ -49,7 +49,6 @@ fun AiIntegrationSettings(navController: NavController) {
     val scope = rememberCoroutineScope()
     val (assistantEnabled, setAssistantEnabled) = rememberPreference(KeuMusicAiEnabledKey, false)
     val preferences by context.dataStore.data.collectAsState(initial = emptyPreferences())
-    var showVoiceAssistantDialog by rememberSaveable { mutableStateOf(false) }
     var editingProvider by rememberSaveable { mutableStateOf("") }
     var apiKeyInput by rememberSaveable { mutableStateOf("") }
 
@@ -63,10 +62,6 @@ fun AiIntegrationSettings(navController: NavController) {
     fun openKeyEditor(provider: String) {
         editingProvider = provider
         apiKeyInput = preferences[keyFor(provider)].orEmpty()
-    }
-
-    if (assistantEnabled && showVoiceAssistantDialog) {
-        KeuMusicVoiceAssistantDialog(onDismiss = { showVoiceAssistantDialog = false })
     }
 
     if (editingProvider.isNotBlank()) {
@@ -123,7 +118,7 @@ fun AiIntegrationSettings(navController: NavController) {
                 PreferenceEntry(
                     title = { Text("Ativar integração KeuMusic IA") },
                     description = if (assistantEnabled) {
-                        "Keu está ativado. Toque para abrir a conversa por voz."
+                        "Keu está ativo. O holograma conversa por voz e controla a reprodução."
                     } else {
                         "Ative para habilitar o assistente KeuMusic. A configuração técnica fica automática."
                     },
@@ -133,14 +128,12 @@ fun AiIntegrationSettings(navController: NavController) {
                             checked = assistantEnabled,
                             onCheckedChange = { enabled ->
                                 setAssistantEnabled(enabled)
-                                showVoiceAssistantDialog = enabled
                             },
                         )
                     },
                     onClick = {
                         val enabled = !assistantEnabled
                         setAssistantEnabled(enabled)
-                        showVoiceAssistantDialog = enabled
                     },
                 )
             }
