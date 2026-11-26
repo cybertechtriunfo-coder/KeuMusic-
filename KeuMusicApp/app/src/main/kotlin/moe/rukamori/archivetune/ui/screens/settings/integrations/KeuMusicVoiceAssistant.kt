@@ -138,10 +138,18 @@ internal fun KeuMusicVoiceAssistantDialog(
                         listening = false
                         status = when (error) {
                             SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
-                                "Não consegui entender. Toque no microfone e tente novamente."
+                                "Não consegui entender. Vou tentar ouvir novamente."
                             SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
                                 "A permissão do microfone não foi concedida."
                             else -> "O reconhecimento de voz falhou. Tente novamente."
+                        }
+                        if (continuousConversation &&
+                            (error == SpeechRecognizer.ERROR_NO_MATCH ||
+                                error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT)
+                        ) {
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                if (continuousConversation && !thinking) requestListening()
+                            }, 600)
                         }
                     }
                     override fun onResults(results: Bundle?) {
@@ -304,6 +312,8 @@ internal fun KeuMusicVoiceAssistantDialog(
                     OutlinedButton(
                         onClick = {
                             continuousConversation = false
+                            recognizer?.cancel()
+                            listening = false
                             tts?.stop()
                             status = "Conversa contínua desativada."
                         },
