@@ -193,15 +193,35 @@ class KeuOfflineSpeechEngine(private val context: Context) {
     }
 
     private fun loadAndListen() {
+        var retry = 0
         try {
-            ensureModel()
-            if (!running || released) return
-            recognizer = createRecognizer()
-            postStatus("Voz offline pronta • Keu está escutando dentro do KeuMusic.")
-            captureLoop()
-        } catch (error: Throwable) {
-            postStatus("Não consegui iniciar a voz offline: ${error.message ?: "erro desconhecido"}.")
-            running = false
+            while (running && !released) {
+                try {
+                    ensureModel()
+                    if (!running || released) break
+                    recognizer?.release()
+                    recognizer = createRecognizer()
+                    postStatus("Voz offline pronta • Keu está escutando dentro do KeuMusic.")
+                    captureLoop()
+                    if (running && !released) error("A captura do microfone foi encerrada inesperadamente.")
+                    retry = 0
+                } catch (error: Throwable) {
+                    if (!running || released || error is InterruptedException) break
+                    runCatching { recognizer?.release() }
+                    recognizer = null
+                    retry++
+                    val waitMs = minOf(30_000L, 2_000L shl (retry - 1).coerceAtMost(4))
+                    postStatus(
+                        "A voz encontrou um problema: ${error.message ?: "erro desconhecido"}. " +
+                            "Vou tentar novamente em ${waitMs / 1_000}s.",
+                    )
+                    try {
+                        Thread.sleep(waitMs)
+                    } catch (_: InterruptedException) {
+                        break
+                    }
+                }
+            }
         } finally {
             runCatching { worker = null }
         }
