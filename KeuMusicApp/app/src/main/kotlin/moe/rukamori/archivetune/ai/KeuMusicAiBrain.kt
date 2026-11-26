@@ -62,6 +62,7 @@ object KeuMusicAiBrain {
             temperature = 0.55,
             maxTokens = 700,
         ).trim().ifBlank { throw AiServiceException("A inteligência retornou uma resposta vazia.") }
+    }
 
     private fun offlineReply(question: String): String {
         val normalized = question.lowercase()
@@ -79,6 +80,5 @@ object KeuMusicAiBrain {
             else ->
                 "Estou ativo no modo local. Os comandos de música continuam disponíveis, mas as respostas para perguntas gerais dependem da conexão inteligente central do KeuMusic. Você não precisa configurar provedores ou chaves no aplicativo."
         }
-    }
     }
 }
