@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit
 class AiServiceException(
     message: String,
     cause: Throwable? = null,
+    val statusCode: Int? = null,
 ) : Exception(message, cause)
 
 object AiTextService {
@@ -412,6 +413,6 @@ object AiTextService {
         val message =
             runCatching { JSONObject(raw).readErrorMessage() }.getOrNull()
                 ?: raw.take(240).ifBlank { "HTTP $status" }
-        return AiServiceException("AI API failed ($status): $message")
+        return AiServiceException("AI API failed ($status): $message", statusCode = status)
     }
 }
