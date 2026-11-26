@@ -82,6 +82,10 @@ internal fun KeuMusicVoiceAssistantDialog(
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
                     putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
                     putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                    // Endpointing tuned to leave a short pause after a complete thought.
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1_000L)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 650L)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 500L)
                     putExtra(RecognizerIntent.EXTRA_PROMPT, "Pode falar com o KeuMusic")
                 }
                 status = "Estou ouvindo..."
