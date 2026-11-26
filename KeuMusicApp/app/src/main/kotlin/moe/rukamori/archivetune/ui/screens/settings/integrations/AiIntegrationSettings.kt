@@ -197,7 +197,7 @@ fun AiIntegrationSettings(
                 PreferenceEntry(
                     title = { Text("Conversar com Keu") },
                     description = "Fale em português e receba respostas por voz. O microfone só é ativado quando você tocar em Falar.",
-                    icon = { Icon(painterResource(R.drawable.mic), null) },
+                    icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
                     onClick = { showVoiceAssistantDialog = true },
                 )
             }
