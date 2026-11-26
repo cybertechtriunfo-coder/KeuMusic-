@@ -53,6 +53,7 @@ private data class KeuMusicAiLine(val author: String, val message: String)
 fun KeuMusicAiConversation(
     onSpeakingChanged: (Boolean) -> Unit,
     onStatusChanged: (String) -> Unit = {},
+    onTranscriptChanged: (String) -> Unit = {},
     onPlayNext: () -> Unit,
     onPlayPrevious: () -> Unit,
     onPausePlayback: () -> Unit,
@@ -478,7 +479,10 @@ fun KeuMusicAiConversation(
         }
     }
 
-    val latestTranscriptHandler by rememberUpdatedState<(String) -> Unit> { handleTranscript(it) }
+    val latestTranscriptHandler by rememberUpdatedState<(String) -> Unit> { text ->
+        onTranscriptChanged(text)
+        handleTranscript(text)
+    }
     val latestStatusHandler by rememberUpdatedState<(String) -> Unit> { onStatusChanged(it) }
     LaunchedEffect(voiceStatus) { latestStatusHandler(voiceStatus) }
 
