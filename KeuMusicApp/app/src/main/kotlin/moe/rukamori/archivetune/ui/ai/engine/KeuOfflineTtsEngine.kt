@@ -159,7 +159,2130 @@ class KeuOfflineTtsEngine(private val context: Context) {
         onStatus("Preparando a voz masculina do Keu • download inicial de aproximadamente 75 MB...")
         val staging = File(root, "$MODEL_DIR-staging").apply { deleteRecursively(); mkdirs() }
         val modelArchive = File(root, "cadu-medium.tar.bz2")
-        download(MODEL_URL, modelArchive, MODEL_SHA256)
+        download(MODEL_URL, modelArchive, MODEL_SHA256) { downloaded, total ->
+            val totalLabel = if (total > 0L) " de ${'
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null) { downloaded, total ->
+            val totalLabel = if (total > 0L) " de ${'
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(
+        url: String,
+        destination: File,
+        expectedSha256: String?,
+        onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> },
+    ) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            val totalBytes = connection.contentLengthLong
+            var downloadedBytes = 0L
+            var nextReportAt = 2L * 1024L * 1024L
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                        downloadedBytes += read
+                        if (downloadedBytes >= nextReportAt) {
+                            onProgress(downloadedBytes, totalBytes)
+                            nextReportAt = downloadedBytes + 2L * 1024L * 1024L
+                        }
+                    }
+                }
+            }
+            onProgress(downloadedBytes, totalBytes)
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{total / (1024 * 1024)} MB" else ""
+            onStatus("Baixando voz masculina do Keu: ${'
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{downloaded / (1024 * 1024)} MB${'
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}totalLabel")
+        }
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{total / (1024 * 1024)} MB" else ""
+            onStatus("Preparando pronúncia pt-BR: ${'
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{total / (1024 * 1024)} MB" else ""
+            onStatus("Baixando voz masculina do Keu: ${'
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{downloaded / (1024 * 1024)} MB${'
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}totalLabel")
+        }
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{downloaded / (1024 * 1024)} MB${'
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{total / (1024 * 1024)} MB" else ""
+            onStatus("Baixando voz masculina do Keu: ${'
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{downloaded / (1024 * 1024)} MB${'
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}totalLabel")
+        }
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}totalLabel")
+        }
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{total / (1024 * 1024)} MB" else ""
+            onStatus("Baixando voz masculina do Keu: ${'
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}{downloaded / (1024 * 1024)} MB${'
+        extractModel(modelArchive, staging)
+        modelArchive.delete()
+
+        onStatus("Instalando a pronúncia em português brasileiro...")
+        val espeakArchive = File(root, "espeak-ng-data.tar.bz2")
+        download(ESPEAK_URL, espeakArchive, null)
+        extractEspeakData(espeakArchive, File(staging, "espeak-ng-data"))
+        espeakArchive.delete()
+
+        if (!isVoiceReady(staging)) {
+            staging.deleteRecursively()
+            error("Os arquivos da voz Cadu ficaram incompletos. Tente novamente com uma conexão estável.")
+        }
+        finalDir.deleteRecursively()
+        if (!staging.renameTo(finalDir)) {
+            staging.copyRecursively(finalDir, overwrite = true)
+            staging.deleteRecursively()
+        }
+        return finalDir
+    }
+
+    private fun isVoiceReady(dir: File): Boolean =
+        File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "espeak-ng-data/phontab").isFile
+
+    private fun download(url: String, destination: File, expectedSha256: String?) {
+        val part = File(destination.path + ".part")
+        part.delete()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 25_000
+            readTimeout = 90_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "KeuMusic-Android")
+        }
+        try {
+            connection.connect()
+            if (connection.responseCode !in 200..299) error("Download da voz falhou: HTTP ${connection.responseCode}.")
+            connection.inputStream.use { input ->
+                FileOutputStream(part).use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+        if (!part.isFile || part.length() < 100_000L) {
+            part.delete()
+            error("O arquivo de voz foi baixado incompleto.")
+        }
+        if (expectedSha256 != null) {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            part.inputStream().buffered().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    messageDigest.update(buffer, 0, read)
+                }
+            }
+            val digest = messageDigest.digest().joinToString("") { "%02x".format(it) }
+            if (!digest.equals(expectedSha256, ignoreCase = true)) {
+                part.delete()
+                error("A verificação de segurança do modelo de voz falhou.")
+            }
+        }
+        destination.delete()
+        if (!part.renameTo(destination)) {
+            part.copyTo(destination, overwrite = true)
+            part.delete()
+        }
+    }
+
+    private fun extractModel(archive: File, destination: File) {
+        var modelFound = false
+        var tokensFound = false
+        var extracted = 0L
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val name = entry.name.substringAfterLast('/')
+                val targetName = when (name) {
+                    MODEL_FILE -> MODEL_FILE
+                    "tokens.txt" -> "tokens.txt"
+                    else -> null
+                } ?: continue
+                val target = File(destination, targetName)
+                extracted += copyEntry(tar, target)
+                if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
+                if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+            }
+        }
+        if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
+    }
+
+    private fun extractEspeakData(archive: File, destination: File) {
+        destination.mkdirs()
+        val base = destination.canonicalFile
+        var extracted = 0L
+        var files = 0
+        TarArchiveInputStream(BufferedInputStream(BZip2CompressorInputStream(archive.inputStream()))).use { tar ->
+            while (true) {
+                val entry = tar.nextTarEntry ?: break
+                if (!entry.isFile) continue
+                val normalized = entry.name.removePrefix("./").trimStart('/')
+                val relative = if (normalized.startsWith("espeak-ng-data/")) normalized.removePrefix("espeak-ng-data/") else normalized
+                if (relative.isBlank()) continue
+                val target = File(destination, relative)
+                if (!target.canonicalFile.path.startsWith(base.path + File.separator)) {
+                    error("O pacote de pronúncia contém um caminho inválido.")
+                }
+                extracted += copyEntry(tar, target)
+                files++
+                if (extracted > MAX_EXTRACTED_BYTES || files > 20_000) error("Pacote de pronúncia excedeu o limite esperado.")
+            }
+        }
+    }
+
+    private fun copyEntry(input: TarArchiveInputStream, target: File): Long {
+        target.parentFile?.mkdirs()
+        var total = 0L
+        FileOutputStream(target).use { output ->
+            val buffer = ByteArray(32 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                output.write(buffer, 0, read)
+            }
+        }
+        return total
+    }
+}
+}totalLabel")
+        }
         extractModel(modelArchive, staging)
         modelArchive.delete()
 
