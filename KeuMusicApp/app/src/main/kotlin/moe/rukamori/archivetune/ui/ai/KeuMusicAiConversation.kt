@@ -113,20 +113,16 @@ fun KeuMusicAiConversation(
                             .lowercase(Locale.ROOT)
                         descriptor.contains("male") || descriptor.contains("mascul")
                     }
-                    val startupVoice = maleVoice ?: ptBrVoices.firstOrNull()
+                    val startupVoice = maleVoice
                     if (languageResult != TextToSpeech.LANG_MISSING_DATA &&
                         languageResult != TextToSpeech.LANG_NOT_SUPPORTED && startupVoice != null
                     ) {
                         fallbackVoice.voice = startupVoice
-                        fallbackVoice.setPitch(if (maleVoice != null) 0.90f else 0.82f)
+                        fallbackVoice.setPitch(0.90f)
                         fallbackVoice.setSpeechRate(0.94f)
                         systemTtsReady = true
                         if (!voiceReady) {
-                            voiceStatus = if (maleVoice != null) {
-                                "Voz masculina pt-BR do Android pronta • alternativa de segurança."
-                            } else {
-                                "Voz pt-BR temporária pronta • preparando a voz Piper do Keu."
-                            }
+                            voiceStatus = "Voz masculina pt-BR do Android pronta • alternativa de segurança."
                         }
                     } else {
                         systemTtsReady = false
