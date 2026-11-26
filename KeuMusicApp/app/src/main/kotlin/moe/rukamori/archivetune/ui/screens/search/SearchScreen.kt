@@ -39,7 +39,6 @@ import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryTab
 import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryViewModel
 import moe.rukamori.archivetune.ui.screens.radio.RadioTopShortcut
 import moe.rukamori.archivetune.ui.screens.radio.KeuTubShortcut
-import moe.rukamori.archivetune.ui.screens.search.MsnMessengerShortcut
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable

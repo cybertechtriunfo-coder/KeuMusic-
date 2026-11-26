@@ -183,7 +183,7 @@ fun MsnMessengerScreen(navController: NavController) {
                             domStorageEnabled = true
                             databaseEnabled = true
                             loadsImagesAutomatically = true
-                            mediaPlaybackRequiresUserGesture = false
+                            mediaPlaybackRequiresUserGesture = true
                             allowContentAccess = true
                             allowFileAccess = false
                             javaScriptCanOpenWindowsAutomatically = true
@@ -194,7 +194,7 @@ fun MsnMessengerScreen(navController: NavController) {
                         }
                         CookieManager.getInstance().apply {
                             setAcceptCookie(true)
-                            setAcceptThirdPartyCookies(this@apply, true)
+                            setAcceptThirdPartyCookies(this@WebView, true)
                         }
                         webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = false
