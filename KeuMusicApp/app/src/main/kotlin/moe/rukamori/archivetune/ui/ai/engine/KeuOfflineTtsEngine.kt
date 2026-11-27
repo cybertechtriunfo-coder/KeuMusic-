@@ -228,7 +228,7 @@ class KeuOfflineTtsEngine(private val context: Context) {
 
     private fun isVoiceReady(dir: File): Boolean =
         File(dir, MODEL_FILE).let { it.isFile && it.length() > 20_000_000L } &&
-            File(dir, "tokens.txt").let { it.isFile && it.length() > 1_000L } &&
+            File(dir, "tokens.txt").let { it.isFile && it.length() > 500L } &&
             File(dir, "espeak-ng-data/phontab").isFile
 
     private fun download(
@@ -315,7 +315,7 @@ class KeuOfflineTtsEngine(private val context: Context) {
                 extracted += copyEntry(tar, target)
                 if (extracted > MAX_EXTRACTED_BYTES) error("Pacote de voz excedeu o limite esperado.")
                 if (targetName == MODEL_FILE) modelFound = target.length() > 20_000_000L
-                if (targetName == "tokens.txt") tokensFound = target.length() > 1_000L
+                if (targetName == "tokens.txt") tokensFound = target.length() > 500L
             }
         }
         if (!modelFound || !tokensFound) error("O pacote Cadu não contém o modelo e os tokens esperados.")
