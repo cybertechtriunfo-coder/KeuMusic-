@@ -9,6 +9,8 @@ package moe.rukamori.archivetune
 import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import androidx.datastore.preferences.core.edit
 import coil3.ImageLoader
@@ -40,6 +42,7 @@ import moe.rukamori.archivetune.spotify.Spotify
 import moe.rukamori.archivetune.spotify.SpotifyGraphqlClient
 import moe.rukamori.archivetune.spotify.SpotifyHashDiscovery
 import moe.rukamori.archivetune.spotify.SpotifyHashRefresher
+import moe.rukamori.archivetune.ui.ai.engine.KeuOfflineTtsEngine
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.screens.settings.graphics.DeviceGraphicsClassifier
 import moe.rukamori.archivetune.utils.PreferenceStore
@@ -104,6 +107,34 @@ class App :
 
         initializeCriticalSync()
         initializeDeferredAsync()
+        prepareKeuMusicVoiceOnWifi()
+    }
+
+    /**
+     * Prepare the dedicated pt-BR male voice before the user opens KeuMusic IA.
+     * This is Wi-Fi-only and skips devices without enough free storage; the regular
+     * AI screen still retains its normal recovery/download path.
+     */
+    private fun prepareKeuMusicVoiceOnWifi() {
+        val connectivity = getSystemService(ConnectivityManager::class.java) ?: return
+        val network = connectivity.activeNetwork ?: return
+        val capabilities = connectivity.getNetworkCapabilities(network) ?: return
+        if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return
+        if (filesDir.usableSpace < 350L * 1024L * 1024L) return
+
+        applicationScope.launch(Dispatchers.IO) {
+            val voiceEngine = KeuOfflineTtsEngine(applicationContext)
+            try {
+                voiceEngine.prepareAssets { message ->
+                    Timber.tag("KeuMusicAI").d("Voice preload: $message")
+                }
+                Timber.tag("KeuMusicAI").i("Brazilian Portuguese male voice assets are ready.")
+            } catch (error: Exception) {
+                Timber.tag("KeuMusicAI").w(error, "Could not preload the male voice; it can retry when KeuMusic IA opens.")
+            } finally {
+                voiceEngine.release()
+            }
+        }
     }
 
     override fun onTrimMemory(level: Int) {
