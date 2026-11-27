@@ -90,10 +90,9 @@ fun KeuMusicAiConversation(
     val voiceEngine = remember(context) { KeuOfflineSpeechEngine(context) }
     val ttsEngine = remember(context) { KeuOfflineTtsEngine(context) }
 
-    // Use an installed Brazilian Portuguese Android voice immediately for the
-    // first greeting while Piper downloads its offline model. Prefer a voice
-    // explicitly tagged male; if Android exposes no gender metadata, use its
-    // pt-BR voice as a temporary startup fallback and switch to Piper when ready.
+    // Android TTS is permitted only when a masculine pt-BR voice is positively
+    // identified. Otherwise the greeting waits for the dedicated Piper Cadu voice;
+    // never silently speak with an unclassified (possibly feminine) system voice.
     DisposableEffect(context) {
         val mainHandler = Handler(Looper.getMainLooper())
         val fallback = TextToSpeech(context) { result ->
