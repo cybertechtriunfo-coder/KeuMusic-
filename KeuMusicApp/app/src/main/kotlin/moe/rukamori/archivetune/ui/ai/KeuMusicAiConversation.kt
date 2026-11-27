@@ -141,10 +141,17 @@ fun KeuMusicAiConversation(
                         if (startupVoice != null) fallbackVoice.voice = startupVoice
                         fallbackVoice.setPitch(if (maleVoice != null) 0.90f else 0.86f)
                         fallbackVoice.setSpeechRate(0.94f)
-                        systemTtsReady = true
+                        // Only mark Android TTS usable when a male Brazilian voice
+                        // was positively identified. Never silently fall back to a default
+                        // voice, which may be feminine on the user's device.
+                        systemTtsReady = maleVoice != null
                         systemTtsInitFinished = true
                         if (!voiceReady) {
-                            voiceStatus = "Voz masculina pt-BR do Android pronta • alternativa de segurança."
+                            voiceStatus = if (maleVoice != null) {
+                                "Voz masculina pt-BR do Android pronta • alternativa de segurança."
+                            } else {
+                                "Não encontrei voz masculina pt-BR no Android. A voz neural masculina do Keu será usada quando estiver pronta."
+                            }
                         }
                     } else {
                         systemTtsReady = false
