@@ -111,16 +111,30 @@ fun KeuMusicAiConversation(
                         it.locale.language.equals("pt", ignoreCase = true) &&
                             it.locale.country.equals("BR", ignoreCase = true)
                     }
-                    val maleVoice = ptBrVoices.firstOrNull { voice ->
-                        val descriptor = (voice.name + " " + voice.features.orEmpty().joinToString(" "))
-                            .lowercase(Locale.ROOT)
-                        descriptor.contains("male") || descriptor.contains("mascul")
-                    }
+                    // Prefer explicit male metadata and known masculine voice identifiers.
+                    // Never select an arbitrary pt-BR voice just because it is available.
+                    val maleVoice = ptBrVoices
+                        .filter { voice ->
+                            val descriptor = (voice.name + " " + voice.features.orEmpty().joinToString(" "))
+                                .lowercase(Locale.ROOT)
+                            listOf(
+                                "male", "mascul", "ricardo", "joao", "joão", "eduardo",
+                                "daniel", "antonio", "antônio", "felipe", "bruno",
+                                "lucas", "gustavo", "cadu", "faber"
+                            ).any(descriptor::contains)
+                        }
+                        .maxByOrNull { voice ->
+                            var score = voice.quality
+                            val descriptor = voice.name.lowercase(Locale.ROOT)
+                            if (descriptor.contains("male") || descriptor.contains("mascul")) score += 100
+                            if (voice.features.orEmpty().contains("network")) score += 10
+                            score
+                        }
                     // Prefer an explicitly male pt-BR voice, but do not block the
                     // assistant when Android exposes no gender metadata. In that case,
                     // keep the engine's accepted pt-BR default voice as a startup fallback;
                     // Piper Cadu remains the preferred male voice when its model is ready.
-                    val startupVoice = maleVoice ?: ptBrVoices.firstOrNull()
+                    val startupVoice = maleVoice
                     if (languageResult != TextToSpeech.LANG_MISSING_DATA &&
                         languageResult != TextToSpeech.LANG_NOT_SUPPORTED
                     ) {
@@ -130,17 +144,13 @@ fun KeuMusicAiConversation(
                         systemTtsReady = true
                         systemTtsInitFinished = true
                         if (!voiceReady) {
-                            voiceStatus = if (maleVoice != null) {
-                                "Voz masculina pt-BR do Android pronta • alternativa de segurança."
-                            } else {
-                                "Voz pt-BR do Android pronta • alternativa inicial enquanto preparo a voz masculina Keu."
-                            }
+                            voiceStatus = "Voz masculina pt-BR do Android pronta • alternativa de segurança."
                         }
                     } else {
                         systemTtsReady = false
                         systemTtsInitFinished = true
                         if (!voiceReady) {
-                            voiceStatus = "Não há voz pt-BR instalada no Android. A apresentação falada depende da instalação de uma voz brasileira."
+                            voiceStatus = "Não encontrei uma voz masculina pt-BR instalada. Vou usar a voz neural Cadu do Keu assim que ela terminar de ser preparada."
                         }
                     }
                 }
