@@ -35,13 +35,29 @@ class KeuOfflineTtsEngine(private val context: Context) {
         private const val MODEL_DIR = "piper-pt-br-cadu-medium"
         private const val MODEL_FILE = "pt_BR-cadu-medium.onnx"
         private const val MAX_EXTRACTED_BYTES = 160L * 1024L * 1024L
+        private val voiceFilesMutex = Mutex()
     }
 
     private val main = Handler(Looper.getMainLooper())
-    private val initializationLock = Mutex()
+    private val initializationLock = voiceFilesMutex
     @Volatile private var tts: OfflineTts? = null
     @Volatile private var currentTrack: AudioTrack? = null
     @Volatile private var released = false
+
+    /**
+     * Downloads and verifies the voice files without loading the native synthesizer.
+     * The app can run this during idle startup on Wi-Fi so activation does not trigger
+     * the first large download.
+     */
+    suspend fun prepareAssets(onStatus: (String) -> Unit = {}) {
+        withContext(Dispatchers.IO) {
+            if (released) return@withContext
+            initializationLock.withLock {
+                if (released) return@withLock
+                ensureVoiceFiles { message -> main.post { onStatus(message) } }
+            }
+        }
+    }
 
     suspend fun initialize(onStatus: (String) -> Unit = {}) {
         withContext(Dispatchers.IO) {
