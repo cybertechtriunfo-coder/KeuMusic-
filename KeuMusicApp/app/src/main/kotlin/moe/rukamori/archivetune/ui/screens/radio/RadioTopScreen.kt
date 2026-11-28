@@ -214,7 +214,7 @@ fun KeuTv90Shortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
         )) {
             Box(Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 12.dp).size(80.dp).clip(RoundedCornerShape(16.dp))) {
                 Image(
-                    painter = painterResource(R.drawable.keutv90_logo),
+                    painter = painterResource(R.drawable.keutv90_logo_image),
                     contentDescription = "KeuTV90",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
