@@ -199,6 +199,38 @@ fun KeuTubShortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
+
+@Composable
+fun KeuTv90Shortcut(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).height(100.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Box(Modifier.fillMaxSize().background(
+            Brush.linearGradient(listOf(Color(0xFF17212B), Color(0xFF38556A), Color(0xFF111827)))
+        )) {
+            Box(Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 12.dp).size(80.dp).clip(RoundedCornerShape(16.dp))) {
+                Image(
+                    painter = painterResource(R.drawable.keutv90_logo),
+                    contentDescription = "KeuTV90",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+            Box(Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.42f), Color.Black.copy(alpha = 0.16f), Color.Transparent))
+            ))
+            Column(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, end = 92.dp, bottom = 14.dp)) {
+                Text("KeuTV90", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Canais de TV • Clássicos dos anos 90", color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 14.sp)
+            }
+        }
+    }
+}
+
 @Composable
 private fun RadioKeuMusicTopMark(modifier: Modifier = Modifier) {
     Image(painter = painterResource(R.drawable.radio_keumusic_top_logo_image), contentDescription = "Rádio KeuMusic Top", modifier = modifier, contentScale = ContentScale.Fit)
