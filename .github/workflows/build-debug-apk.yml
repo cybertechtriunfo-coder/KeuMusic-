@@ -14,6 +14,7 @@ on:
       - feature/keumusic-ai-local-memory-20261125
       - work/keumusic-ai-voice-fallback-20261126
       - work/keumusic-ai-opencompanion-adapt-20261126
+      - feature/keutv90-in-app-20261128
   workflow_dispatch:
 
 permissions:
