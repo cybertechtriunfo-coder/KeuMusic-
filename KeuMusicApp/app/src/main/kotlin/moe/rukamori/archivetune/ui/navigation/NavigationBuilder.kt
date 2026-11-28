@@ -82,6 +82,9 @@ fun NavGraphBuilder.navigationBuilder(
     composable("keutub") {
         moe.rukamori.archivetune.ui.screens.search.KeuTubScreen(navController)
     }
+    composable("keutv90") {
+        moe.rukamori.archivetune.ui.screens.search.KeuTv90Screen(navController)
+    }
     composable("msn_keumusic") {
         moe.rukamori.archivetune.ui.screens.search.MsnMessengerScreen(navController)
     }
