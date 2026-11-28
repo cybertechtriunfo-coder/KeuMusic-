@@ -112,7 +112,6 @@ fun KeuTv90Screen(navController: NavController) {
         onDispose {
             webView?.stopLoading()
             webView?.webChromeClient = null
-            webView?.webViewClient = null
             webView?.destroy()
             webView = null
         }
