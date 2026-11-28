@@ -39,6 +39,7 @@ import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryTab
 import moe.rukamori.archivetune.ui.screens.search.SearchDiscoveryViewModel
 import moe.rukamori.archivetune.ui.screens.radio.RadioTopShortcut
 import moe.rukamori.archivetune.ui.screens.radio.KeuTubShortcut
+import moe.rukamori.archivetune.ui.screens.radio.KeuTv90Shortcut
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -177,6 +178,15 @@ fun SearchScreen(
                             ) {
                                 KeuTubShortcut(
                                     onClick = { navController.navigate("keutub") },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                            item(
+                                key = "search_keutv90_shortcut",
+                                contentType = "keutv90_shortcut",
+                            ) {
+                                KeuTv90Shortcut(
+                                    onClick = { navController.navigate("keutv90") },
                                     modifier = Modifier.animateItem(),
                                 )
                             }
