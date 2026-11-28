@@ -46,7 +46,6 @@ fun KeuTv90Screen(navController: NavController) {
 
     BackHandler(enabled = canGoBack) {
         webView?.goBack()
-        canGoBack = webView?.canGoBack() == true
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -83,6 +82,7 @@ fun KeuTv90Screen(navController: NavController) {
                     webChromeClient = WebChromeClient()
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                            // Keep navigation and redirects inside the in-app browser.
                             return false
                         }
 
@@ -95,12 +95,14 @@ fun KeuTv90Screen(navController: NavController) {
                             pageTitle = view.title?.takeIf { it.isNotBlank() } ?: "Canais clássicos"
                         }
                     }
+                    // Load exactly once. Calling loadUrl again from AndroidView.update can
+                    // restart the initial navigation while WebView.url is still null.
                     loadUrl(KEUTV90_URL)
                     webView = this
                 }
             },
+            // Recomposition must not trigger another navigation or reload the page.
             update = { view ->
-                if (view.url == null) view.loadUrl(KEUTV90_URL)
                 webView = view
             },
         )
@@ -110,7 +112,7 @@ fun KeuTv90Screen(navController: NavController) {
         onDispose {
             webView?.stopLoading()
             webView?.webChromeClient = null
-            webView?.webViewClient = WebViewClient()
+            webView?.webViewClient = null
             webView?.destroy()
             webView = null
         }
