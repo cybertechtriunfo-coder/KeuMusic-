@@ -38,12 +38,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 
@@ -76,21 +78,6 @@ fun KeuTv90Screen(navController: NavController) {
         exitFullScreen()
     }
 
-    // Hide Android status and navigation bars only during website video fullscreen.
-    DisposableEffect(fullScreenView != null) {
-        val window = context.findActivity()?.window
-        val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
-        if (fullScreenView != null) {
-            controller?.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller?.hide(WindowInsetsCompat.Type.systemBars())
-        } else {
-            controller?.show(WindowInsetsCompat.Type.systemBars())
-        }
-        onDispose {
-            controller?.show(WindowInsetsCompat.Type.systemBars())
-        }
-    }
     BackHandler(enabled = fullScreenView == null && canGoBack) {
         webView?.goBack()
     }
@@ -182,6 +169,18 @@ fun KeuTv90Screen(navController: NavController) {
                 decorFitsSystemWindows = false,
             ),
         ) {
+            val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+            DisposableEffect(dialogWindow) {
+                val controller = dialogWindow?.let {
+                    WindowCompat.getInsetsController(it, it.decorView)
+                }
+                controller?.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                controller?.hide(WindowInsetsCompat.Type.systemBars())
+                onDispose {
+                    controller?.show(WindowInsetsCompat.Type.systemBars())
+                }
+            }
             Box(
                 modifier = Modifier.fillMaxSize().background(Color.Black),
             ) {
